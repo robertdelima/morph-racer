@@ -1,482 +1,332 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Morph Racer</title>
-    <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            user-select: none;
-        }
-
-        body {
-            background-color: #0f172a;
-            color: #f8fafc;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            overflow: hidden;
-        }
-
-        #game-container {
-            position: relative;
-            width: 400px;
-            height: 600px;
-            background-color: #1e293b;
-            border: 4px solid #38bdf8;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
-        }
-
-        canvas {
-            display: block;
-            background-color: #334155;
-        }
-
-        /* Overlays / Interface */
-        .overlay {
-            position: absolute;
-            inset: 0;
-            background: rgba(15, 23, 42, 0.9);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            gap: 16px;
-            padding: 20px;
-            text-align: center;
-            z-index: 10;
-        }
-
-        .hidden {
-            display: none !important;
-        }
-
-        h1 {
-            font-size: 2.2rem;
-            color: #38bdf8;
-            text-shadow: 0 0 10px rgba(56, 189, 248, 0.5);
-        }
-
-        .btn {
-            background: #2563eb;
-            color: #fff;
-            border: none;
-            padding: 12px 24px;
-            font-size: 1rem;
-            font-weight: bold;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            width: 80%;
-            max-width: 220px;
-        }
-
-        .btn:hover {
-            background: #3b82f6;
-            transform: translateY(-2px);
-        }
-
-        .btn-secondary {
-            background: #475569;
-        }
-
-        .btn-secondary:hover {
-            background: #64748b;
-        }
-
-        .coin-display {
-            font-size: 1.2rem;
-            color: #fbbf24;
-            font-weight: bold;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        /* HUD */
-        #hud {
-            position: absolute;
-            top: 12px;
-            left: 12px;
-            right: 12px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-weight: bold;
-            font-size: 1rem;
-            pointer-events: none;
-            z-index: 5;
-            background: rgba(15, 23, 42, 0.6);
-            padding: 8px 12px;
-            border-radius: 6px;
-        }
-
-        /* Loja */
-        .shop-grid {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            width: 100%;
-            max-height: 320px;
-            overflow-y: auto;
-            padding: 8px;
-        }
-
-        .shop-item {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            background: #1e293b;
-            border: 2px solid #475569;
-            padding: 10px 14px;
-            border-radius: 8px;
-        }
-
-        .shop-item.active {
-            border-color: #22c55e;
-            background: #064e3b;
-        }
-
-        .skin-info {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .skin-preview {
-            width: 24px;
-            height: 36px;
-            border-radius: 4px;
-        }
-
-        .btn-buy {
-            padding: 6px 12px;
-            font-size: 0.85rem;
-            width: auto;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Morph Racer - Moto & Carro</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      background-color: #121212;
+      color: #ffffff;
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+    #game-container {
+      position: relative;
+      width: 800px;
+      height: 400px;
+      border: 4px solid #ffffff;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 0 20px rgba(0, 255, 200, 0.3);
+    }
+    canvas {
+      display: block;
+      background: #000;
+    }
+    #hud {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      right: 10px;
+      display: flex;
+      justify-content: space-between;
+      font-size: 18px;
+      font-weight: bold;
+      text-shadow: 2px 2px 4px #000;
+      pointer-events: none;
+    }
+    #controls-info {
+      margin-top: 15px;
+      text-align: center;
+      color: #aaa;
+      font-size: 14px;
+    }
+  </style>
 </head>
 <body>
 
-    <div id="game-container">
-        <!-- HUD em Jogo -->
-        <div id="hud" class="hidden">
-            <span id="hud-score">Pontos: 0</span>
-            <span id="hud-coins" class="coin-display">🪙 0</span>
-        </div>
-
-        <!-- Tela Principal -->
-        <div id="main-menu" class="overlay">
-            <h1>Morph Racer</h1>
-            <div class="coin-display">Moedas: <span id="menu-coins">0</span></div>
-            <button class="btn" onclick="startGame()">Jogar</button>
-            <button class="btn btn-secondary" onclick="openShop()">Loja de Skins</button>
-        </div>
-
-        <!-- Tela da Loja -->
-        <div id="shop-menu" class="overlay hidden">
-            <h2>Loja de Skins</h2>
-            <div class="coin-display">Moedas: <span id="shop-coins">0</span></div>
-            <div class="shop-grid" id="shop-grid"></div>
-            <button class="btn btn-secondary" onclick="closeShop()">Voltar</button>
-        </div>
-
-        <!-- Tela de Game Over -->
-        <div id="game-over-menu" class="overlay hidden">
-            <h1>Fim de Jogo!</h1>
-            <p id="final-score" style="font-size: 1.1rem;">Pontuação: 0</p>
-            <div class="coin-display">Coletadas: <span id="session-coins">0</span></div>
-            <button class="btn" onclick="startGame()">Jogar Novamente</button>
-            <button class="btn btn-secondary" onclick="showMainMenu()">Menu Principal</button>
-        </div>
-
-        <canvas id="gameCanvas" width="400" height="600"></canvas>
+  <div id="game-container">
+    <div id="hud">
+      <div id="mode-text">MODO: MOTO (PLATAFORMA)</div>
+      <div id="score-text">Distância: 0m</div>
     </div>
+    <canvas id="gameCanvas" width="800" height="400"></canvas>
+  </div>
 
-    <script>
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
+  <div id="controls-info">
+    <p><strong>Controles Moto:</strong> BARRA DE ESPAÇO ou SETA PARA CIMA = Pular</p>
+    <p><strong>Controles Carro:</strong> SETAS ESQUERDA / DIREITA = Mudar de Faixa</p>
+  </div>
 
-        // Configurações do Jogo
-        const LANES = [80, 200, 320]; // Posições X das 3 pistas
-        let currentLane = 1;
-        let score = 0;
-        let coinsCollected = 0;
-        let totalCoins = parseInt(localStorage.getItem('mr_coins')) || 0;
-        let gameActive = false;
-        let gameSpeed = 5;
-        let animationFrameId;
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const modeText = document.getElementById('mode-text');
+    const scoreText = document.getElementById('score-text');
 
-        // Skins Disponíveis
-        const skins = [
-            { id: 'default', name: 'Padrão', color: '#38bdf8', price: 0, unlocked: true },
-            { id: 'neon_green', name: 'Neon Green', color: '#22c55e', price: 50, unlocked: false },
-            { id: 'crimson', name: 'Crimson Speed', color: '#ef4444', price: 100, unlocked: false },
-            { id: 'gold', name: 'Golden Flash', color: '#eab308', price: 200, unlocked: false }
-        ];
+    // Configurações do Jogo
+    let gameMode = 'MOTO'; // 'MOTO' ou 'CARRO'
+    let distance = 0;
+    const TRANSITION_DISTANCE = 300; // Distância para trocar de modo
+    let gameOver = false;
 
-        // Carregar salvamento de skins
-        let unlockedSkins = JSON.parse(localStorage.getItem('mr_unlocked_skins')) || ['default'];
-        let equippedSkin = localStorage.getItem('mr_equipped_skin') || 'default';
+    // Teclas
+    const keys = {};
 
-        skins.forEach(s => {
-            if (unlockedSkins.includes(s.id)) s.unlocked = true;
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'Space' || e.code === 'ArrowUp') {
+        if (gameMode === 'MOTO' && !moto.isJumping) {
+          moto.vy = moto.jumpForce;
+          moto.isJumping = true;
+        }
+      }
+      keys[e.code] = true;
+    });
+
+    window.addEventListener('keyup', (e) => {
+      keys[e.code] = false;
+    });
+
+    // Moto (Modo Plataforma Lateral)
+    const moto = {
+      x: 100,
+      y: 280,
+      width: 50,
+      height: 30,
+      vy: 0,
+      gravity: 0.8,
+      jumpForce: -13,
+      groundY: 280,
+      isJumping: false,
+      draw() {
+        // Corpo da Moto
+        ctx.fillStyle = '#ff3366';
+        ctx.fillRect(this.x, this.y, this.width, this.height);
+        
+        // Rodas
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(this.x + 10, this.y + this.height, 10, 0, Math.PI * 2);
+        ctx.arc(this.x + this.width - 10, this.y + this.height, 10, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Capacete do Piloto
+        ctx.fillStyle = '#00f0ff';
+        ctx.beginPath();
+        ctx.arc(this.x + 20, this.y - 5, 8, 0, Math.PI * 2);
+        ctx.fill();
+      },
+      update() {
+        this.vy += this.gravity;
+        this.y += this.vy;
+
+        if (this.y >= this.groundY) {
+          this.y = this.groundY;
+          this.vy = 0;
+          this.isJumping = false;
+        }
+      }
+    };
+
+    // Carro (Modo Visão Superior)
+    const car = {
+      x: 375,
+      y: 300,
+      width: 50,
+      height: 80,
+      speed: 6,
+      lanes: [175, 375, 575],
+      currentLane: 1,
+      draw() {
+        ctx.fillStyle = '#00ff88';
+        ctx.fillRect(this.x, this.y, this.width, this.height);
+        
+        // Detalhes do Carro
+        ctx.fillStyle = '#111';
+        ctx.fillRect(this.x + 5, this.y + 15, this.width - 10, 20);
+      },
+      update() {
+        const targetX = this.lanes[this.currentLane];
+        this.x += (targetX - this.x) * 0.2;
+      }
+    };
+
+    // Obstáculos
+    let obstacles = [];
+    let spawnTimer = 0;
+
+    function spawnObstacle() {
+      if (gameMode === 'MOTO') {
+        obstacles.push({
+          x: canvas.width,
+          y: 290,
+          width: 30,
+          height: 20,
+          type: 'barrier'
         });
-
-        // Entidades
-        const player = {
-            x: LANES[1],
-            y: 500,
-            width: 40,
-            height: 60,
-            targetX: LANES[1]
-        };
-
-        let obstacles = [];
-        let coins = [];
-
-        // Input
-        window.addEventListener('keydown', (e) => {
-            if (!gameActive) return;
-            if ((e.key === 'ArrowLeft' || e.key === 'a') && currentLane > 0) {
-                currentLane--;
-            } else if ((e.key === 'ArrowRight' || e.key === 'd') && currentLane < LANES.length - 1) {
-                currentLane++;
-            }
-            player.targetX = LANES[currentLane];
+      } else if (gameMode === 'CARRO') {
+        const lane = Math.floor(Math.random() * 3);
+        obstacles.push({
+          x: car.lanes[lane] + 10,
+          y: -80,
+          width: 30,
+          height: 60,
+          type: 'traffic'
         });
+      }
+    }
 
-        // Atualizar Dados UI
-        function updateCoinDisplays() {
-            document.getElementById('menu-coins').innerText = totalCoins;
-            document.getElementById('shop-coins').innerText = totalCoins;
-            document.getElementById('hud-coins').innerText = `🪙 ${coinsCollected}`;
-            localStorage.setItem('mr_coins', totalCoins);
+    // Troca de Modo
+    function switchMode(newMode) {
+      gameMode = newMode;
+      obstacles = [];
+      
+      if (newMode === 'CARRO') {
+        modeText.innerText = "MODO: CARRO (CORRIDA)";
+      }
+    }
+
+    // Loop Principal
+    function gameLoop() {
+      if (gameOver) return;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      distance += 0.5;
+      scoreText.innerText = `Distância: ${Math.floor(distance)}m`;
+
+      // Verificação de transição de fase
+      if (gameMode === 'MOTO' && distance >= TRANSITION_DISTANCE) {
+        switchMode('CARRO');
+      }
+
+      // --- RENDERIZAÇÃO E LÓGICA POR MODO ---
+      if (gameMode === 'MOTO') {
+        // Fundo e Chão Plataforma
+        ctx.fillStyle = '#1a1a2e';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        ctx.fillStyle = '#4e4e6a';
+        ctx.fillRect(0, 310, canvas.width, 90);
+        
+        ctx.fillStyle = '#00ffcc';
+        ctx.fillRect(0, 308, canvas.width, 2);
+
+        // Moto
+        moto.update();
+        moto.draw();
+
+        // Obstáculos da Moto
+        spawnTimer++;
+        if (spawnTimer > 90) {
+          spawnObstacle();
+          spawnTimer = 0;
         }
 
-        // Loop Principal
-        function update() {
-            if (!gameActive) return;
+        for (let i = obstacles.length - 1; i >= 0; i--) {
+          let obs = obstacles[i];
+          obs.x -= 6;
 
-            // Movimento suave do jogador
-            player.x += (player.targetX - player.x) * 0.2;
+          ctx.fillStyle = '#ff4444';
+          ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
 
-            // Gerar Obstáculos
-            if (Math.random() < 0.02) {
-                const lane = Math.floor(Math.random() * LANES.length);
-                obstacles.push({ x: LANES[lane], y: -60, width: 40, height: 60 });
-            }
+          // Colisão Moto x Obstáculo
+          if (
+            moto.x < obs.x + obs.width &&
+            moto.x + moto.width > obs.x &&
+            moto.y < obs.y + obs.height &&
+            moto.y + moto.height > obs.y
+          ) {
+            resetGame();
+          }
 
-            // Gerar Moedas
-            if (Math.random() < 0.03) {
-                const lane = Math.floor(Math.random() * LANES.length);
-                coins.push({ x: LANES[lane], y: -30, radius: 10 });
-            }
-
-            // Mover Obstáculos
-            for (let i = obstacles.length - 1; i >= 0; i--) {
-                obstacles[i].y += gameSpeed;
-
-                // Colisão com Obstáculo
-                if (checkCollisionRect(player, obstacles[i])) {
-                    endGame();
-                    return;
-                }
-
-                if (obstacles[i].y > canvas.height) {
-                    obstacles.splice(i, 1);
-                    score += 10;
-                    document.getElementById('hud-score').innerText = `Pontos: ${score}`;
-                    if (score % 100 === 0) gameSpeed += 0.5; // Aumenta velocidade
-                }
-            }
-
-            // Mover Moedas
-            for (let i = coins.length - 1; i >= 0; i--) {
-                coins[i].y += gameSpeed;
-
-                // Colisão com Moeda
-                if (checkCollisionCoin(player, coins[i])) {
-                    coins.splice(i, 1);
-                    coinsCollected++;
-                    totalCoins++;
-                    updateCoinDisplays();
-                    continue;
-                }
-
-                if (coins[i].y > canvas.height) {
-                    coins.splice(i, 1);
-                }
-            }
-
-            draw();
-            animationFrameId = requestAnimationFrame(update);
+          if (obs.x + obs.width < 0) obstacles.splice(i, 1);
         }
 
-        // Renderização
-        function draw() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+      } else if (gameMode === 'CARRO') {
+        // Pista Superior
+        ctx.fillStyle = '#222';
+        ctx.fillRect(100, 0, 600, canvas.height);
 
-            // Desenhar Linhas das Pistas
-            ctx.strokeStyle = '#475569';
-            ctx.setLineDash([20, 20]);
-            ctx.lineWidth = 2;
-            [140, 260].forEach(x => {
-                ctx.beginPath();
-                ctx.moveTo(x, 0);
-                ctx.lineTo(x, canvas.height);
-                ctx.stroke();
-            });
+        // Linhas de faixa
+        ctx.strokeStyle = '#fff';
+        ctx.setLineDash([20, 20]);
+        ctx.lineWidth = 4;
+        
+        ctx.beginPath();
+        ctx.moveTo(300, 0); ctx.lineTo(300, canvas.height);
+        ctx.moveTo(500, 0); ctx.lineTo(500, canvas.height);
+        ctx.stroke();
+        ctx.setLineDash([]);
 
-            // Desenhar Jogador
-            const currentSkinObj = skins.find(s => s.id === equippedSkin) || skins[0];
-            ctx.fillStyle = currentSkinObj.color;
-            ctx.beginPath();
-            ctx.roundRect(player.x - player.width / 2, player.y - player.height / 2, player.width, player.height, 8);
-            ctx.fill();
+        // Carro
+        car.update();
+        car.draw();
 
-            // Detalhe de iluminação no veículo
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
-            ctx.fillRect(player.x - player.width / 4, player.y - player.height / 3, player.width / 2, 10);
-
-            // Desenhar Obstáculos
-            ctx.fillStyle = '#f43f5e';
-            obstacles.forEach(obs => {
-                ctx.beginPath();
-                ctx.roundRect(obs.x - obs.width / 2, obs.y - obs.height / 2, obs.width, obs.height, 6);
-                ctx.fill();
-            });
-
-            // Desenhar Moedas
-            ctx.fillStyle = '#fbbf24';
-            coins.forEach(coin => {
-                ctx.beginPath();
-                ctx.arc(coin.x, coin.y, coin.radius, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.strokeStyle = '#d97706';
-                ctx.lineWidth = 2;
-                ctx.stroke();
-            });
+        // Obstáculos do Carro
+        spawnTimer++;
+        if (spawnTimer > 60) {
+          spawnObstacle();
+          spawnTimer = 0;
         }
 
-        // Detecção de Colisão
-        function checkCollisionRect(p, o) {
-            return Math.abs(p.x - o.x) < (p.width / 2 + o.width / 2) * 0.8 &&
-                   Math.abs(p.y - o.y) < (p.height / 2 + o.height / 2) * 0.8;
+        for (let i = obstacles.length - 1; i >= 0; i--) {
+          let obs = obstacles[i];
+          obs.y += 5;
+
+          ctx.fillStyle = '#ffbb00';
+          ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
+
+          // Colisão Carro x Obstáculo
+          if (
+            car.x < obs.x + obs.width &&
+            car.x + car.width > obs.x &&
+            car.y < obs.y + obs.height &&
+            car.y + car.height > obs.y
+          ) {
+            resetGame();
+          }
+
+          if (obs.y > canvas.height) obstacles.splice(i, 1);
         }
+      }
 
-        function checkCollisionCoin(p, c) {
-            return Math.abs(p.x - c.x) < (p.width / 2 + c.radius) &&
-                   Math.abs(p.y - c.y) < (p.height / 2 + c.radius);
+      requestAnimationFrame(gameLoop);
+    }
+
+    // Entrada de comandos para troca de faixa do carro
+    window.addEventListener('keydown', (e) => {
+      if (gameMode === 'CARRO') {
+        if (e.code === 'ArrowLeft' && car.currentLane > 0) {
+          car.currentLane--;
+        } else if (e.code === 'ArrowRight' && car.currentLane < 2) {
+          car.currentLane++;
         }
+      }
+    });
 
-        // Fluxo do Jogo
-        function startGame() {
-            gameActive = true;
-            score = 0;
-            coinsCollected = 0;
-            gameSpeed = 5;
-            currentLane = 1;
-            player.x = LANES[1];
-            player.targetX = LANES[1];
-            obstacles = [];
-            coins = [];
+    function resetGame() {
+      distance = 0;
+      obstacles = [];
+      gameMode = 'MOTO';
+      modeText.innerText = "MODO: MOTO (PLATAFORMA)";
+      moto.y = moto.groundY;
+      moto.vy = 0;
+      car.currentLane = 1;
+      car.x = car.lanes[1];
+    }
 
-            document.getElementById('main-menu').classList.add('hidden');
-            document.getElementById('game-over-menu').classList.add('hidden');
-            document.getElementById('hud').classList.remove('hidden');
-
-            document.getElementById('hud-score').innerText = `Pontos: 0`;
-            updateCoinDisplays();
-
-            cancelAnimationFrame(animationFrameId);
-            update();
-        }
-
-        function endGame() {
-            gameActive = false;
-            cancelAnimationFrame(animationFrameId);
-            document.getElementById('hud').classList.add('hidden');
-            document.getElementById('game-over-menu').classList.remove('hidden');
-            document.getElementById('final-score').innerText = `Pontuação: ${score}`;
-            document.getElementById('session-coins').innerText = coinsCollected;
-        }
-
-        function showMainMenu() {
-            document.getElementById('game-over-menu').classList.add('hidden');
-            document.getElementById('shop-menu').classList.add('hidden');
-            document.getElementById('main-menu').classList.remove('hidden');
-            updateCoinDisplays();
-        }
-
-        // Gerenciamento da Loja
-        function openShop() {
-            document.getElementById('main-menu').classList.add('hidden');
-            document.getElementById('shop-menu').classList.remove('hidden');
-            renderShop();
-        }
-
-        function closeShop() {
-            showMainMenu();
-        }
-
-        function renderShop() {
-            const grid = document.getElementById('shop-grid');
-            grid.innerHTML = '';
-            updateCoinDisplays();
-
-            skins.forEach(skin => {
-                const item = document.createElement('div');
-                item.className = `shop-item ${equippedSkin === skin.id ? 'active' : ''}`;
-
-                let actionBtn = '';
-                if (skin.unlocked) {
-                    if (equippedSkin === skin.id) {
-                        actionBtn = `<button class="btn btn-buy" disabled style="background:#15803d;">Equipado</button>`;
-                    } else {
-                        actionBtn = `<button class="btn btn-buy" onclick="equipSkin('${skin.id}')">Equipar</button>`;
-                    }
-                } else {
-                    actionBtn = `<button class="btn btn-buy" onclick="buySkin('${skin.id}')">🪙 ${skin.price}</button>`;
-                }
-
-                item.innerHTML = `
-                    <div class="skin-info">
-                        <div class="skin-preview" style="background: ${skin.color}"></div>
-                        <span>${skin.name}</span>
-                    </div>
-                    ${actionBtn}
-                `;
-                grid.appendChild(item);
-            });
-        }
-
-        function buySkin(id) {
-            const skin = skins.find(s => s.id === id);
-            if (skin && !skin.unlocked && totalCoins >= skin.price) {
-                totalCoins -= skin.price;
-                skin.unlocked = true;
-                unlockedSkins.push(skin.id);
-                localStorage.setItem('mr_unlocked_skins', JSON.stringify(unlockedSkins));
-                equipSkin(skin.id);
-            }
-        }
-
-        function equipSkin(id) {
-            equippedSkin = id;
-            localStorage.setItem('mr_equipped_skin', equippedSkin);
-            renderShop();
-        }
-
-        // Inicialização
-        updateCoinDisplays();
-    </script>
+    // Iniciar Jogo
+    gameLoop();
+  </script>
 </body>
 </html>
