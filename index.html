@@ -2,553 +2,481 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Morph Racer - HD Edition</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Morph Racer</title>
     <style>
         * {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
             user-select: none;
-            -webkit-user-select: none;
         }
+
         body {
-            background-color: #0d0e15;
+            background-color: #0f172a;
+            color: #f8fafc;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
+            min-height: 100vh;
             overflow: hidden;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
+
         #game-container {
             position: relative;
-            width: 100vw;
-            height: 100vh;
-            max-width: 480px;
-            max-height: 800px;
-            background: #000;
-            box-shadow: 0 0 30px rgba(0,255,200,0.2);
+            width: 400px;
+            height: 600px;
+            background-color: #1e293b;
+            border: 4px solid #38bdf8;
             border-radius: 12px;
             overflow: hidden;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
         }
+
         canvas {
-            width: 100%;
-            height: 100%;
             display: block;
+            background-color: #334155;
         }
-        #ui-hud {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            right: 20px;
-            display: flex;
-            justify-content: space-between;
-            color: #FFF;
-            font-size: 16px;
-            font-weight: 800;
-            letter-spacing: 1px;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.8);
-            pointer-events: none;
-            z-index: 10;
-        }
-        .hud-card {
-            background: rgba(0, 0, 0, 0.6);
-            padding: 8px 16px;
-            border-radius: 20px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            backdrop-filter: blur(4px);
-        }
+
+        /* Overlays / Interface */
         .overlay {
             position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(10, 12, 24, 0.9);
+            inset: 0;
+            background: rgba(15, 23, 42, 0.9);
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            color: #FFF;
-            z-index: 20;
-            backdrop-filter: blur(6px);
+            gap: 16px;
+            padding: 20px;
+            text-align: center;
+            z-index: 10;
         }
-        .overlay h1 {
-            font-size: 42px;
-            font-weight: 900;
-            margin-bottom: 5px;
-            background: linear-gradient(180deg, #FFF 0%, #FF8C00 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            text-shadow: 0 10px 20px rgba(255,140,0,0.3);
+
+        .hidden {
+            display: none !important;
         }
-        .overlay p { font-size: 16px; color: #a0a5c0; margin-bottom: 30px; }
-        .btn-container { display: flex; gap: 15px; }
-        button {
-            padding: 14px 28px;
-            font-size: 16px;
-            font-weight: 700;
+
+        h1 {
+            font-size: 2.2rem;
+            color: #38bdf8;
+            text-shadow: 0 0 10px rgba(56, 189, 248, 0.5);
+        }
+
+        .btn {
+            background: #2563eb;
+            color: #fff;
             border: none;
-            border-radius: 30px;
+            padding: 12px 24px;
+            font-size: 1rem;
+            font-weight: bold;
+            border-radius: 8px;
             cursor: pointer;
-            transition: transform 0.15s, box-shadow 0.15s;
+            transition: all 0.2s ease;
+            width: 80%;
+            max-width: 220px;
         }
-        button:active { transform: scale(0.95); }
-        .btn-retry { background: #10b981; color: white; box-shadow: 0 4px 15px rgba(16,185,129,0.4); }
-        .btn-quit { background: #ef4444; color: white; box-shadow: 0 4px 15px rgba(239,68,68,0.4); }
-        .btn-start { background: linear-gradient(90deg, #f59e0b, #ef4444); color: white; font-size: 20px; padding: 16px 48px; box-shadow: 0 6px 20px rgba(239,68,68,0.5); }
-        .hidden { display: none !important; }
+
+        .btn:hover {
+            background: #3b82f6;
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: #475569;
+        }
+
+        .btn-secondary:hover {
+            background: #64748b;
+        }
+
+        .coin-display {
+            font-size: 1.2rem;
+            color: #fbbf24;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* HUD */
+        #hud {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            right: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: bold;
+            font-size: 1rem;
+            pointer-events: none;
+            z-index: 5;
+            background: rgba(15, 23, 42, 0.6);
+            padding: 8px 12px;
+            border-radius: 6px;
+        }
+
+        /* Loja */
+        .shop-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            width: 100%;
+            max-height: 320px;
+            overflow-y: auto;
+            padding: 8px;
+        }
+
+        .shop-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #1e293b;
+            border: 2px solid #475569;
+            padding: 10px 14px;
+            border-radius: 8px;
+        }
+
+        .shop-item.active {
+            border-color: #22c55e;
+            background: #064e3b;
+        }
+
+        .skin-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .skin-preview {
+            width: 24px;
+            height: 36px;
+            border-radius: 4px;
+        }
+
+        .btn-buy {
+            padding: 6px 12px;
+            font-size: 0.85rem;
+            width: auto;
+        }
     </style>
 </head>
 <body>
 
-<div id="game-container">
-    <div id="ui-hud">
-        <div class="hud-card" id="hud-level">FASE 1</div>
-        <div class="hud-card" id="hud-highscore">RECORDE: 0</div>
-    </div>
-
-    <canvas id="gameCanvas"></canvas>
-
-    <div id="screen-start" class="overlay">
-        <h1>MORPH RACER</h1>
-        <p>Acelere, Mude de Forma & Sobreviva!</p>
-        <button class="btn-start" onclick="startGame()">JOGAR</button>
-    </div>
-
-    <div id="screen-gameover" class="overlay hidden">
-        <h1>COLISÃO!</h1>
-        <p id="gameover-info">Fase alcançada: 1</p>
-        <div class="btn-container">
-            <button class="btn-retry" onclick="restartLevel()">Tentar de Novo</button>
-            <button class="btn-quit" onclick="quitGame()">Desistir</button>
+    <div id="game-container">
+        <!-- HUD em Jogo -->
+        <div id="hud" class="hidden">
+            <span id="hud-score">Pontos: 0</span>
+            <span id="hud-coins" class="coin-display">🪙 0</span>
         </div>
+
+        <!-- Tela Principal -->
+        <div id="main-menu" class="overlay">
+            <h1>Morph Racer</h1>
+            <div class="coin-display">Moedas: <span id="menu-coins">0</span></div>
+            <button class="btn" onclick="startGame()">Jogar</button>
+            <button class="btn btn-secondary" onclick="openShop()">Loja de Skins</button>
+        </div>
+
+        <!-- Tela da Loja -->
+        <div id="shop-menu" class="overlay hidden">
+            <h2>Loja de Skins</h2>
+            <div class="coin-display">Moedas: <span id="shop-coins">0</span></div>
+            <div class="shop-grid" id="shop-grid"></div>
+            <button class="btn btn-secondary" onclick="closeShop()">Voltar</button>
+        </div>
+
+        <!-- Tela de Game Over -->
+        <div id="game-over-menu" class="overlay hidden">
+            <h1>Fim de Jogo!</h1>
+            <p id="final-score" style="font-size: 1.1rem;">Pontuação: 0</p>
+            <div class="coin-display">Coletadas: <span id="session-coins">0</span></div>
+            <button class="btn" onclick="startGame()">Jogar Novamente</button>
+            <button class="btn btn-secondary" onclick="showMainMenu()">Menu Principal</button>
+        </div>
+
+        <canvas id="gameCanvas" width="400" height="600"></canvas>
     </div>
-</div>
 
-<script>
-const canvas = document.getElementById("gameCanvas");
-const ctx = canvas.getContext("2d");
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
 
-canvas.width = 360;
-canvas.height = 640;
+        // Configurações do Jogo
+        const LANES = [80, 200, 320]; // Posições X das 3 pistas
+        let currentLane = 1;
+        let score = 0;
+        let coinsCollected = 0;
+        let totalCoins = parseInt(localStorage.getItem('mr_coins')) || 0;
+        let gameActive = false;
+        let gameSpeed = 5;
+        let animationFrameId;
 
-let gameState = "MENU";
-let currentLevel = 1;
-let highScore = localStorage.getItem("morph_racer_record") || 0;
-let progress = 0;
-const LEVEL_LENGTH = 1600;
-let animFrame = 0;
+        // Skins Disponíveis
+        const skins = [
+            { id: 'default', name: 'Padrão', color: '#38bdf8', price: 0, unlocked: true },
+            { id: 'neon_green', name: 'Neon Green', color: '#22c55e', price: 50, unlocked: false },
+            { id: 'crimson', name: 'Crimson Speed', color: '#ef4444', price: 100, unlocked: false },
+            { id: 'gold', name: 'Golden Flash', color: '#eab308', price: 200, unlocked: false }
+        ];
 
-// SINTETIZADOR DE ÁUDIO
-let audioCtx = null;
-function initAudio() {
-    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-}
-function playSound(type) {
-    if (!audioCtx) return;
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    osc.connect(gain);
-    gain.connect(audioCtx.destination);
-    const now = audioCtx.currentTime;
+        // Carregar salvamento de skins
+        let unlockedSkins = JSON.parse(localStorage.getItem('mr_unlocked_skins')) || ['default'];
+        let equippedSkin = localStorage.getItem('mr_equipped_skin') || 'default';
 
-    if (type === "jump") {
-        osc.type = "sine";
-        osc.frequency.setValueAtTime(150, now);
-        osc.frequency.exponentialRampToValueAtTime(600, now + 0.15);
-        gain.gain.setValueAtTime(0.3, now);
-        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
-        osc.start(now); osc.stop(now + 0.15);
-    } else if (type === "crash") {
-        osc.type = "sawtooth";
-        osc.frequency.setValueAtTime(120, now);
-        osc.frequency.exponentialRampToValueAtTime(30, now + 0.3);
-        gain.gain.setValueAtTime(0.4, now);
-        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
-        osc.start(now); osc.stop(now + 0.3);
-    } else if (type === "win") {
-        osc.type = "triangle";
-        osc.frequency.setValueAtTime(300, now);
-        osc.frequency.setValueAtTime(450, now + 0.1);
-        osc.frequency.setValueAtTime(600, now + 0.2);
-        gain.gain.setValueAtTime(0.3, now);
-        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
-        osc.start(now); osc.stop(now + 0.35);
-    }
-}
+        skins.forEach(s => {
+            if (unlockedSkins.includes(s.id)) s.unlocked = true;
+        });
 
-function updateHUD() {
-    document.getElementById("hud-level").innerText = `FASE ${currentLevel}`;
-    document.getElementById("hud-highscore").innerText = `RECORDE: ${highScore}`;
-}
-updateHUD();
+        // Entidades
+        const player = {
+            x: LANES[1],
+            y: 500,
+            width: 40,
+            height: 60,
+            targetX: LANES[1]
+        };
 
-let touchX = canvas.width / 2;
-let isTouching = false;
-let jumpPressed = false;
+        let obstacles = [];
+        let coins = [];
 
-function handleInputStart(x) {
-    if (gameState !== "PLAYING") return;
-    isTouching = true;
-    jumpPressed = true;
-    touchX = x;
-}
-function handleInputMove(x) { if (gameState === "PLAYING") touchX = x; }
-function handleInputEnd() { isTouching = false; jumpPressed = false; }
-
-canvas.addEventListener("touchstart", (e) => {
-    let rect = canvas.getBoundingClientRect();
-    handleInputStart((e.touches[0].clientX - rect.left) * (canvas.width / rect.width));
-});
-canvas.addEventListener("touchmove", (e) => {
-    let rect = canvas.getBoundingClientRect();
-    handleInputMove((e.touches[0].clientX - rect.left) * (canvas.width / rect.width));
-});
-canvas.addEventListener("touchend", handleInputEnd);
-canvas.addEventListener("mousedown", (e) => {
-    let rect = canvas.getBoundingClientRect();
-    handleInputStart((e.clientX - rect.left) * (canvas.width / rect.width));
-});
-canvas.addEventListener("mousemove", (e) => {
-    if (isTouching) {
-        let rect = canvas.getBoundingClientRect();
-        handleInputMove((e.clientX - rect.left) * (canvas.width / rect.width));
-    }
-});
-canvas.addEventListener("mouseup", handleInputEnd);
-window.addEventListener("keydown", (e) => { if (e.code === "Space") handleInputStart(canvas.width / 2); });
-window.addEventListener("keyup", (e) => { if (e.code === "Space") handleInputEnd(); });
-
-let obstacles = [];
-
-// --- FASE 1: MOTO (SIDE-SCROLLER) ---
-let bike = { y: 430, vy: 0, isGrounded: true };
-
-function initLevel1() {
-    obstacles = []; bike.y = 430; bike.vy = 0;
-    for (let i = 500; i < LEVEL_LENGTH; i += 280 + Math.random() * 140) {
-        obstacles.push({ x: i, type: Math.floor(Math.random() * 3) });
-    }
-}
-
-function updateLevel1() {
-    progress += 4.5;
-    if (jumpPressed && bike.isGrounded) {
-        bike.vy = -12.5; bike.isGrounded = false; jumpPressed = false;
-        playSound("jump");
-    }
-    bike.y += bike.vy;
-    bike.vy += 0.65;
-    if (bike.y >= 430) { bike.y = 430; bike.vy = 0; bike.isGrounded = true; }
-
-    let bikeX = 140;
-    for (let obs of obstacles) {
-        let screenX = obs.x - progress + bikeX;
-        if (screenX > 110 && screenX < 160 && bike.y > 400) triggerGameOver();
-    }
-    if (progress >= LEVEL_LENGTH) nextLevel();
-}
-
-function drawLevel1() {
-    // Pôr do Sol Tropical Gradiente
-    let skyGrad = ctx.createLinearGradient(0, 0, 0, 320);
-    skyGrad.addColorStop(0, '#1a0b2e'); skyGrad.addColorStop(0.5, '#8b1e58'); skyGrad.addColorStop(1, '#ff6b35');
-    ctx.fillStyle = skyGrad; ctx.fillRect(0, 0, canvas.width, 320);
-
-    // Sol no horizonte
-    ctx.fillStyle = '#ffe66d'; ctx.beginPath(); ctx.arc(180, 240, 45, 0, Math.PI*2); ctx.fill();
-
-    // Silhuetas de Montanhas & Coqueiros (Parallax)
-    ctx.fillStyle = '#4a0e4e';
-    ctx.beginPath();
-    ctx.moveTo(0, 320);
-    for(let i=0; i<=canvas.width; i+=40) ctx.lineTo(i, 230 + Math.sin((i + progress*0.2)*0.02)*25);
-    ctx.lineTo(canvas.width, 320); ctx.fill();
-
-    // Pista e Asfalto
-    let roadGrad = ctx.createLinearGradient(0, 450, 0, canvas.height);
-    roadGrad.addColorStop(0, '#2d3142'); roadGrad.addColorStop(1, '#1b1d28');
-    ctx.fillStyle = roadGrad; ctx.fillRect(0, 450, canvas.width, 190);
-    ctx.fillStyle = '#e0a96d'; ctx.fillRect(0, 445, canvas.width, 6); // Guia de terra
-
-    // Faixas do Asfalto Animadas
-    ctx.fillStyle = '#ffffff';
-    for(let i = - (progress * 1.5) % 40; i < canvas.width; i += 40) {
-        ctx.fillRect(i, 520, 20, 4);
-    }
-
-    // Obstáculos Renderizados
-    for (let obs of obstacles) {
-        let screenX = obs.x - progress + 140;
-        if (screenX > -60 && screenX < canvas.width + 60) {
-            if (obs.type === 0) { // Rampa
-                ctx.fillStyle = '#a65b32';
-                ctx.beginPath(); ctx.moveTo(screenX, 450); ctx.lineTo(screenX + 50, 450); ctx.lineTo(screenX + 50, 410); ctx.fill();
-                ctx.fillStyle = '#e28743'; ctx.fillRect(screenX + 46, 410, 4, 40);
-            } else if (obs.type === 1) { // Tonel de Óleo
-                ctx.fillStyle = '#d62828'; ctx.fillRect(screenX, 410, 26, 40);
-                ctx.fillStyle = '#003049'; ctx.fillRect(screenX, 422, 26, 8);
-                ctx.fillStyle = '#fcbf49'; ctx.beginPath(); ctx.arc(screenX+13, 430, 4, 0, Math.PI*2); ctx.fill();
-            } else { // Pedras 3D
-                ctx.fillStyle = '#5c677d';
-                ctx.beginPath(); ctx.arc(screenX + 18, 435, 15, 0, Math.PI * 2); ctx.fill();
-                ctx.fillStyle = '#7d8597'; ctx.beginPath(); ctx.arc(screenX + 14, 430, 8, 0, Math.PI * 2); ctx.fill();
+        // Input
+        window.addEventListener('keydown', (e) => {
+            if (!gameActive) return;
+            if ((e.key === 'ArrowLeft' || e.key === 'a') && currentLane > 0) {
+                currentLane--;
+            } else if ((e.key === 'ArrowRight' || e.key === 'd') && currentLane < LANES.length - 1) {
+                currentLane++;
             }
+            player.targetX = LANES[currentLane];
+        });
+
+        // Atualizar Dados UI
+        function updateCoinDisplays() {
+            document.getElementById('menu-coins').innerText = totalCoins;
+            document.getElementById('shop-coins').innerText = totalCoins;
+            document.getElementById('hud-coins').innerText = `🪙 ${coinsCollected}`;
+            localStorage.setItem('mr_coins', totalCoins);
         }
-    }
 
-    // Moto HD + Piloto
-    let bx = 140, by = bike.y;
-    // Sombra
-    ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.beginPath(); ctx.ellipse(bx + 15, 448, 20, 5, 0, 0, Math.PI*2); ctx.fill();
-    // Rodas com Raios em Rotação
-    ctx.strokeStyle = '#333'; ctx.lineWidth = 4;
-    ctx.beginPath(); ctx.arc(bx - 5, by + 12, 10, 0, Math.PI*2); ctx.stroke();
-    ctx.beginPath(); ctx.arc(bx + 30, by + 12, 10, 0, Math.PI*2); ctx.stroke();
-    // Carenagem da Moto
-    ctx.fillStyle = '#ef233c'; ctx.beginPath(); ctx.moveTo(bx - 8, by + 5); ctx.lineTo(bx + 25, by - 5); ctx.lineTo(bx + 32, by + 8); ctx.fill();
-    ctx.fillStyle = '#d90429'; ctx.fillRect(bx + 5, by - 2, 18, 10);
-    // Escape + Fogo Animado
-    ctx.fillStyle = '#8d99ae'; ctx.fillRect(bx - 12, by + 8, 10, 3);
-    if(Math.random() > 0.3) { ctx.fillStyle = '#ffb703'; ctx.fillRect(bx - 17, by + 7, 5, 5); }
-    // Piloto
-    ctx.fillStyle = '#2b2d42'; ctx.fillRect(bx + 5, by - 16, 10, 14); // Corpo
-    ctx.fillStyle = '#d90429'; ctx.beginPath(); ctx.arc(bx + 12, by - 20, 7, 0, Math.PI*2); ctx.fill(); // Capacete
-    ctx.fillStyle = '#00b4d8'; ctx.fillRect(bx + 14, by - 22, 5, 4); // Viseira
+        // Loop Principal
+        function update() {
+            if (!gameActive) return;
 
-    // Linha de Chegada com Bandeira
-    let flagX = LEVEL_LENGTH - progress + 140;
-    if (flagX < canvas.width + 100) {
-        ctx.fillStyle = '#ffffff'; ctx.fillRect(flagX, 330, 6, 120);
-        ctx.fillStyle = '#000000';
-        for(let r=0; r<4; r++) {
-            for(let c=0; c<2; c++) {
-                if((r+c)%2 === 0) ctx.fillRect(flagX + 6 + c*10, 330 + r*10, 10, 10);
+            // Movimento suave do jogador
+            player.x += (player.targetX - player.x) * 0.2;
+
+            // Gerar Obstáculos
+            if (Math.random() < 0.02) {
+                const lane = Math.floor(Math.random() * LANES.length);
+                obstacles.push({ x: LANES[lane], y: -60, width: 40, height: 60 });
             }
-        }
-    }
-}
 
-// --- FASE 2: CARRO (TOP-DOWN) ---
-let carX = 180;
-
-function initLevel2() {
-    obstacles = []; carX = 180;
-    for (let i = 400; i < LEVEL_LENGTH; i += 220 + Math.random() * 120) {
-        obstacles.push({ y: -i, x: 95 + Math.random() * 170, color: ['#e63946','#2a9d8f','#e9c46a'][Math.floor(Math.random()*3)] });
-    }
-}
-
-function updateLevel2() {
-    progress += 5.5;
-    carX += (touchX - carX) * 0.18;
-    for (let obs of obstacles) {
-        let screenY = obs.y + progress;
-        if (Math.abs(screenY - 510) < 40 && Math.abs(obs.x - carX) < 28) triggerGameOver();
-    }
-    if (progress >= LEVEL_LENGTH) nextLevel();
-}
-
-function drawLevel2() {
-    // Gramado Lateral
-    ctx.fillStyle = '#2d6a4f'; ctx.fillRect(0, 0, canvas.width, canvas.height);
-    
-    // Asfalto da Pista
-    ctx.fillStyle = '#212529'; ctx.fillRect(60, 0, 240, canvas.height);
-
-    // Zebras Animadas nas Bordas
-    for(let i = - (progress * 2) % 30; i < canvas.height; i += 30) {
-        ctx.fillStyle = (Math.floor((i + progress*2)/30) % 2 === 0) ? '#e63946' : '#ffffff';
-        ctx.fillRect(52, i, 8, 30); ctx.fillRect(300, i, 8, 30);
-    }
-
-    // Linha Central Tracing
-    ctx.fillStyle = '#ffb703';
-    for (let i = - (progress * 2) % 40; i < canvas.height; i += 40) {
-        ctx.fillRect(178, i, 4, 20);
-    }
-
-    // Carros Inimigos HD
-    for (let obs of obstacles) {
-        let screenY = obs.y + progress;
-        if (screenY > -60 && screenY < canvas.height + 60) {
-            let cx = obs.x, cy = screenY;
-            // Sombra
-            ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.fillRect(cx - 14, cy - 20, 32, 48);
-            // Chassi
-            ctx.fillStyle = obs.color; ctx.fillRect(cx - 15, cy - 22, 30, 44);
-            // Teto/Vidros
-            ctx.fillStyle = '#1d3557'; ctx.fillRect(cx - 10, cy - 10, 20, 20);
-            ctx.fillStyle = '#457b9d'; ctx.fillRect(cx - 8, cy - 14, 16, 5); // Para-brisa
-            // Faróis Traseiros
-            ctx.fillStyle = '#ff0000'; ctx.fillRect(cx - 13, cy + 18, 6, 3); ctx.fillRect(cx + 7, cy + 18, 6, 3);
-        }
-    }
-
-    // Carro Principal (Player)
-    let px = carX, py = 510;
-    // Feixe dos Faróis
-    let headlight = ctx.createLinearGradient(px, py - 20, px, py - 90);
-    headlight.addColorStop(0, 'rgba(255,255,200,0.5)'); headlight.addColorStop(1, 'rgba(255,255,200,0)');
-    ctx.fillStyle = headlight;
-    ctx.beginPath(); ctx.moveTo(px - 10, py - 20); ctx.lineTo(px - 25, py - 90); ctx.lineTo(px + 25, py - 90); ctx.lineTo(px + 10, py - 20); ctx.fill();
-
-    // Sombra do Carro
-    ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.fillRect(px - 14, py - 20, 32, 48);
-    // Corpo do Esportivo
-    ctx.fillStyle = '#00b4d8'; ctx.fillRect(px - 15, py - 22, 30, 44);
-    ctx.fillStyle = '#90e0ef'; ctx.fillRect(px - 11, py - 8, 22, 18); // Cabine
-    ctx.fillStyle = '#03045e'; ctx.fillRect(px - 9, py - 12, 18, 6); // Para-brisa dianteiro
-    // Aerofólio
-    ctx.fillStyle = '#023e8a'; ctx.fillRect(px - 16, py + 18, 32, 5);
-
-    // Chegada (Bandeirada)
-    let flagY = LEVEL_LENGTH - progress;
-    if (flagY > -60 && flagY < canvas.height) {
-        ctx.fillStyle = '#ffffff'; ctx.fillRect(60, canvas.height - flagY, 240, 24);
-        ctx.fillStyle = '#000000';
-        for(let i=0; i<12; i++) {
-            if(i%2===0) {
-                ctx.fillRect(60 + i*20, canvas.height - flagY, 10, 12);
-                ctx.fillRect(70 + i*20, canvas.height - flagY + 12, 10, 12);
+            // Gerar Moedas
+            if (Math.random() < 0.03) {
+                const lane = Math.floor(Math.random() * LANES.length);
+                coins.push({ x: LANES[lane], y: -30, radius: 10 });
             }
+
+            // Mover Obstáculos
+            for (let i = obstacles.length - 1; i >= 0; i--) {
+                obstacles[i].y += gameSpeed;
+
+                // Colisão com Obstáculo
+                if (checkCollisionRect(player, obstacles[i])) {
+                    endGame();
+                    return;
+                }
+
+                if (obstacles[i].y > canvas.height) {
+                    obstacles.splice(i, 1);
+                    score += 10;
+                    document.getElementById('hud-score').innerText = `Pontos: ${score}`;
+                    if (score % 100 === 0) gameSpeed += 0.5; // Aumenta velocidade
+                }
+            }
+
+            // Mover Moedas
+            for (let i = coins.length - 1; i >= 0; i--) {
+                coins[i].y += gameSpeed;
+
+                // Colisão com Moeda
+                if (checkCollisionCoin(player, coins[i])) {
+                    coins.splice(i, 1);
+                    coinsCollected++;
+                    totalCoins++;
+                    updateCoinDisplays();
+                    continue;
+                }
+
+                if (coins[i].y > canvas.height) {
+                    coins.splice(i, 1);
+                }
+            }
+
+            draw();
+            animationFrameId = requestAnimationFrame(update);
         }
-    }
-}
 
-// --- FASE 3: AVIÃO (PERSPECTIVA 3D REVERSA) ---
-let planeX = 180;
+        // Renderização
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-function initLevel3() {
-    obstacles = []; planeX = 180;
-    for (let i = 450; i < LEVEL_LENGTH; i += 240 + Math.random() * 100) {
-        obstacles.push({ z: i, x: 70 + Math.random() * 220, type: Math.random() > 0.4 ? 'building' : 'plane' });
-    }
-}
-
-function updateLevel3() {
-    progress += 6;
-    planeX += (touchX - planeX) * 0.18;
-    for (let obs of obstacles) {
-        let distZ = obs.z - progress;
-        if (distZ < 40 && distZ > 0 && Math.abs(obs.x - planeX) < 35) triggerGameOver();
-    }
-    if (progress >= LEVEL_LENGTH) nextLevel();
-}
-
-function drawLevel3() {
-    // Céu e Pôr do sol
-    let skyGrad = ctx.createLinearGradient(0, 0, 0, 340);
-    skyGrad.addColorStop(0, '#03045e'); skyGrad.addColorStop(0.6, '#0077b6'); skyGrad.addColorStop(1, '#90e0ef');
-    ctx.fillStyle = skyGrad; ctx.fillRect(0, 0, canvas.width, 340);
-
-    // Solo Gradiente de velocidade
-    let groundGrad = ctx.createLinearGradient(0, 340, 0, canvas.height);
-    groundGrad.addColorStop(0, '#132a13'); groundGrad.addColorStop(1, '#31572c');
-    ctx.fillStyle = groundGrad; ctx.fillRect(0, 340, canvas.width, 300);
-
-    // Grade de perspectiva no solo
-    ctx.strokeStyle = 'rgba(255,255,255,0.15)'; ctx.lineWidth = 1;
-    for(let x = -200; x <= canvas.width + 200; x += 60) {
-        ctx.beginPath(); ctx.moveTo(180, 340); ctx.lineTo(x, canvas.height); ctx.stroke();
-    }
-
-    // Obstáculos 3D com Escalonamento
-    for (let obs of obstacles) {
-        let distZ = obs.z - progress;
-        if (distZ > 0 && distZ < 700) {
-            let scale = 1 - (distZ / 700);
-            let drawX = 180 + (obs.x - 180) * scale;
-            let drawY = 340 + 120 * scale;
-            let size = 65 * scale;
-
-            if (obs.type === 'building') {
-                // Prédio Espelhado 3D
-                ctx.fillStyle = '#1d2d44'; ctx.fillRect(drawX - size/2, drawY - size*2.5, size, size*2.5);
-                ctx.fillStyle = '#3e5c76'; ctx.fillRect(drawX - size/2, drawY - size*2.5, size*0.3, size*2.5); // Sombra lateral
-                ctx.fillStyle = '#f0a500'; // Janelas
-                if(size > 15) ctx.fillRect(drawX - size/4, drawY - size*2, size/4, size/5);
-            } else {
-                // Caça Inimigo
-                ctx.fillStyle = '#d90429';
+            // Desenhar Linhas das Pistas
+            ctx.strokeStyle = '#475569';
+            ctx.setLineDash([20, 20]);
+            ctx.lineWidth = 2;
+            [140, 260].forEach(x => {
                 ctx.beginPath();
-                ctx.moveTo(drawX, drawY - size/2);
-                ctx.lineTo(drawX - size, drawY + size/2);
-                ctx.lineTo(drawX + size, drawY + size/2); ctx.fill();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvas.height);
+                ctx.stroke();
+            });
+
+            // Desenhar Jogador
+            const currentSkinObj = skins.find(s => s.id === equippedSkin) || skins[0];
+            ctx.fillStyle = currentSkinObj.color;
+            ctx.beginPath();
+            ctx.roundRect(player.x - player.width / 2, player.y - player.height / 2, player.width, player.height, 8);
+            ctx.fill();
+
+            // Detalhe de iluminação no veículo
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+            ctx.fillRect(player.x - player.width / 4, player.y - player.height / 3, player.width / 2, 10);
+
+            // Desenhar Obstáculos
+            ctx.fillStyle = '#f43f5e';
+            obstacles.forEach(obs => {
+                ctx.beginPath();
+                ctx.roundRect(obs.x - obs.width / 2, obs.y - obs.height / 2, obs.width, obs.height, 6);
+                ctx.fill();
+            });
+
+            // Desenhar Moedas
+            ctx.fillStyle = '#fbbf24';
+            coins.forEach(coin => {
+                ctx.beginPath();
+                ctx.arc(coin.x, coin.y, coin.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = '#d97706';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            });
+        }
+
+        // Detecção de Colisão
+        function checkCollisionRect(p, o) {
+            return Math.abs(p.x - o.x) < (p.width / 2 + o.width / 2) * 0.8 &&
+                   Math.abs(p.y - o.y) < (p.height / 2 + o.height / 2) * 0.8;
+        }
+
+        function checkCollisionCoin(p, c) {
+            return Math.abs(p.x - c.x) < (p.width / 2 + c.radius) &&
+                   Math.abs(p.y - c.y) < (p.height / 2 + c.radius);
+        }
+
+        // Fluxo do Jogo
+        function startGame() {
+            gameActive = true;
+            score = 0;
+            coinsCollected = 0;
+            gameSpeed = 5;
+            currentLane = 1;
+            player.x = LANES[1];
+            player.targetX = LANES[1];
+            obstacles = [];
+            coins = [];
+
+            document.getElementById('main-menu').classList.add('hidden');
+            document.getElementById('game-over-menu').classList.add('hidden');
+            document.getElementById('hud').classList.remove('hidden');
+
+            document.getElementById('hud-score').innerText = `Pontos: 0`;
+            updateCoinDisplays();
+
+            cancelAnimationFrame(animationFrameId);
+            update();
+        }
+
+        function endGame() {
+            gameActive = false;
+            cancelAnimationFrame(animationFrameId);
+            document.getElementById('hud').classList.add('hidden');
+            document.getElementById('game-over-menu').classList.remove('hidden');
+            document.getElementById('final-score').innerText = `Pontuação: ${score}`;
+            document.getElementById('session-coins').innerText = coinsCollected;
+        }
+
+        function showMainMenu() {
+            document.getElementById('game-over-menu').classList.add('hidden');
+            document.getElementById('shop-menu').classList.add('hidden');
+            document.getElementById('main-menu').classList.remove('hidden');
+            updateCoinDisplays();
+        }
+
+        // Gerenciamento da Loja
+        function openShop() {
+            document.getElementById('main-menu').classList.add('hidden');
+            document.getElementById('shop-menu').classList.remove('hidden');
+            renderShop();
+        }
+
+        function closeShop() {
+            showMainMenu();
+        }
+
+        function renderShop() {
+            const grid = document.getElementById('shop-grid');
+            grid.innerHTML = '';
+            updateCoinDisplays();
+
+            skins.forEach(skin => {
+                const item = document.createElement('div');
+                item.className = `shop-item ${equippedSkin === skin.id ? 'active' : ''}`;
+
+                let actionBtn = '';
+                if (skin.unlocked) {
+                    if (equippedSkin === skin.id) {
+                        actionBtn = `<button class="btn btn-buy" disabled style="background:#15803d;">Equipado</button>`;
+                    } else {
+                        actionBtn = `<button class="btn btn-buy" onclick="equipSkin('${skin.id}')">Equipar</button>`;
+                    }
+                } else {
+                    actionBtn = `<button class="btn btn-buy" onclick="buySkin('${skin.id}')">🪙 ${skin.price}</button>`;
+                }
+
+                item.innerHTML = `
+                    <div class="skin-info">
+                        <div class="skin-preview" style="background: ${skin.color}"></div>
+                        <span>${skin.name}</span>
+                    </div>
+                    ${actionBtn}
+                `;
+                grid.appendChild(item);
+            });
+        }
+
+        function buySkin(id) {
+            const skin = skins.find(s => s.id === id);
+            if (skin && !skin.unlocked && totalCoins >= skin.price) {
+                totalCoins -= skin.price;
+                skin.unlocked = true;
+                unlockedSkins.push(skin.id);
+                localStorage.setItem('mr_unlocked_skins', JSON.stringify(unlockedSkins));
+                equipSkin(skin.id);
             }
         }
-    }
 
-    // Avião Acrobático do Player (3ª Pessoa)
-    let ax = planeX, ay = 480;
-    // Rastro de Fumaça nas asas
-    ctx.strokeStyle = 'rgba(255,255,255,0.4)'; ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.moveTo(ax - 38, ay + 10); ctx.lineTo(ax - 50, canvas.height); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(ax + 38, ay + 10); ctx.lineTo(ax + 50, canvas.height); ctx.stroke();
+        function equipSkin(id) {
+            equippedSkin = id;
+            localStorage.setItem('mr_equipped_skin', equippedSkin);
+            renderShop();
+        }
 
-    // Sombra no Solo
-    ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.beginPath(); ctx.ellipse(ax, 570, 30, 8, 0, 0, Math.PI*2); ctx.fill();
-
-    // Corpo do Avião
-    ctx.fillStyle = '#f72585'; // Asas
-    ctx.beginPath(); ctx.moveTo(ax, ay - 25); ctx.lineTo(ax - 42, ay + 12); ctx.lineTo(ax + 42, ay + 12); ctx.fill();
-    ctx.fillStyle = '#7209b7'; ctx.fillRect(ax - 6, ay - 30, 12, 42); // Fuselagem
-    ctx.fillStyle = '#4cc9f0'; ctx.beginPath(); ctx.arc(ax, ay - 10, 5, 0, Math.PI*2); ctx.fill(); // Canopi / Cockpit
-    // Hélice Rotação
-    ctx.strokeStyle = 'rgba(255,255,255,0.8)'; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.arc(ax, ay - 32, 12, 0, Math.PI*2); ctx.stroke();
-}
-
-// LOOP & ESTADOS
-function loop() {
-    animFrame++;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    if (gameState === "PLAYING") {
-        let mode = (currentLevel - 1) % 3;
-        if (mode === 0) { updateLevel1(); drawLevel1(); }
-        else if (mode === 1) { updateLevel2(); drawLevel2(); }
-        else if (mode === 2) { updateLevel3(); drawLevel3(); }
-    }
-    requestAnimationFrame(loop);
-}
-
-function startGame() {
-    initAudio(); currentLevel = 1; startLevel();
-    document.getElementById("screen-start").classList.add("hidden");
-}
-
-function startLevel() {
-    progress = 0; gameState = "PLAYING"; updateHUD();
-    document.getElementById("screen-gameover").classList.add("hidden");
-    let mode = (currentLevel - 1) % 3;
-    if (mode === 0) initLevel1();
-    else if (mode === 1) initLevel2();
-    else if (mode === 2) initLevel3();
-}
-
-function nextLevel() {
-    playSound("win"); currentLevel++;
-    if (currentLevel > highScore) {
-        highScore = currentLevel;
-        localStorage.setItem("morph_racer_record", highScore);
-    }
-    startLevel();
-}
-
-function triggerGameOver() {
-    playSound("crash"); gameState = "GAMEOVER";
-    document.getElementById("gameover-info").innerText = `Fase alcançada: ${currentLevel}`;
-    document.getElementById("screen-gameover").classList.remove("hidden");
-}
-
-function restartLevel() { initAudio(); startLevel(); }
-function quitGame() {
-    gameState = "MENU";
-    document.getElementById("screen-gameover").classList.add("hidden");
-    document.getElementById("screen-start").classList.remove("hidden");
-}
-
-loop();
-</script>
+        // Inicialização
+        updateCoinDisplays();
+    </script>
 </body>
 </html>
