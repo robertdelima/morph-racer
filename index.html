@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Morph Racer</title>
+    <title>Morph Racer - HD Edition</title>
     <style>
         * {
             box-sizing: border-box;
@@ -13,13 +13,13 @@
             -webkit-user-select: none;
         }
         body {
-            background-color: #111;
+            background-color: #0d0e15;
             display: flex;
             justify-content: center;
             align-items: center;
             height: 100vh;
             overflow: hidden;
-            font-family: Arial, sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
         #game-container {
             position: relative;
@@ -28,7 +28,8 @@
             max-width: 480px;
             max-height: 800px;
             background: #000;
-            box-shadow: 0 0 20px rgba(0,0,0,0.8);
+            box-shadow: 0 0 30px rgba(0,255,200,0.2);
+            border-radius: 12px;
             overflow: hidden;
         }
         canvas {
@@ -38,45 +39,62 @@
         }
         #ui-hud {
             position: absolute;
-            top: 15px;
-            left: 15px;
-            right: 15px;
+            top: 20px;
+            left: 20px;
+            right: 20px;
             display: flex;
             justify-content: space-between;
             color: #FFF;
-            font-size: 18px;
-            font-weight: bold;
-            text-shadow: 2px 2px 4px #000;
+            font-size: 16px;
+            font-weight: 800;
+            letter-spacing: 1px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.8);
             pointer-events: none;
             z-index: 10;
+        }
+        .hud-card {
+            background: rgba(0, 0, 0, 0.6);
+            padding: 8px 16px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(4px);
         }
         .overlay {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.85);
+            background: rgba(10, 12, 24, 0.9);
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
             color: #FFF;
             z-index: 20;
+            backdrop-filter: blur(6px);
         }
-        .overlay h1 { font-size: 36px; margin-bottom: 10px; color: #FFD700; text-shadow: 0 0 10px #FF8C00; }
-        .overlay p { font-size: 18px; margin-bottom: 25px; }
+        .overlay h1 {
+            font-size: 42px;
+            font-weight: 900;
+            margin-bottom: 5px;
+            background: linear-gradient(180deg, #FFF 0%, #FF8C00 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 10px 20px rgba(255,140,0,0.3);
+        }
+        .overlay p { font-size: 16px; color: #a0a5c0; margin-bottom: 30px; }
         .btn-container { display: flex; gap: 15px; }
         button {
-            padding: 12px 24px;
-            font-size: 18px;
-            font-weight: bold;
+            padding: 14px 28px;
+            font-size: 16px;
+            font-weight: 700;
             border: none;
-            border-radius: 8px;
+            border-radius: 30px;
             cursor: pointer;
-            transition: transform 0.1s;
+            transition: transform 0.15s, box-shadow 0.15s;
         }
         button:active { transform: scale(0.95); }
-        .btn-retry { background: #28a745; color: white; }
-        .btn-quit { background: #dc3545; color: white; }
-        .btn-start { background: #FF8C00; color: white; font-size: 22px; padding: 15px 40px; }
+        .btn-retry { background: #10b981; color: white; box-shadow: 0 4px 15px rgba(16,185,129,0.4); }
+        .btn-quit { background: #ef4444; color: white; box-shadow: 0 4px 15px rgba(239,68,68,0.4); }
+        .btn-start { background: linear-gradient(90deg, #f59e0b, #ef4444); color: white; font-size: 20px; padding: 16px 48px; box-shadow: 0 6px 20px rgba(239,68,68,0.5); }
         .hidden { display: none !important; }
     </style>
 </head>
@@ -84,22 +102,20 @@
 
 <div id="game-container">
     <div id="ui-hud">
-        <span id="hud-level">FASE: 1</span>
-        <span id="hud-highscore">RECORDE: 0</span>
+        <div class="hud-card" id="hud-level">FASE 1</div>
+        <div class="hud-card" id="hud-highscore">RECORDE: 0</div>
     </div>
 
     <canvas id="gameCanvas"></canvas>
 
-    <!-- Menu Inicial -->
     <div id="screen-start" class="overlay">
         <h1>MORPH RACER</h1>
-        <p>3 Modos em 1 Desafio!</p>
+        <p>Acelere, Mude de Forma & Sobreviva!</p>
         <button class="btn-start" onclick="startGame()">JOGAR</button>
     </div>
 
-    <!-- Menu Game Over -->
     <div id="screen-gameover" class="overlay hidden">
-        <h1>BATEU!</h1>
+        <h1>COLISÃO!</h1>
         <p id="gameover-info">Fase alcançada: 1</p>
         <div class="btn-container">
             <button class="btn-retry" onclick="restartLevel()">Tentar de Novo</button>
@@ -119,60 +135,49 @@ let gameState = "MENU";
 let currentLevel = 1;
 let highScore = localStorage.getItem("morph_racer_record") || 0;
 let progress = 0;
-const LEVEL_LENGTH = 1500;
+const LEVEL_LENGTH = 1600;
+let animFrame = 0;
 
-// SINTETIZADOR DE ÁUDIO (Web Audio API)
+// SINTETIZADOR DE ÁUDIO
 let audioCtx = null;
-
 function initAudio() {
-    if (!audioCtx) {
-        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    }
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 }
-
 function playSound(type) {
     if (!audioCtx) return;
-
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
     osc.connect(gain);
     gain.connect(audioCtx.destination);
-
     const now = audioCtx.currentTime;
 
     if (type === "jump") {
-        // Efeito de Pulo (Moto)
         osc.type = "sine";
         osc.frequency.setValueAtTime(150, now);
         osc.frequency.exponentialRampToValueAtTime(600, now + 0.15);
         gain.gain.setValueAtTime(0.3, now);
         gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
-        osc.start(now);
-        osc.stop(now + 0.15);
+        osc.start(now); osc.stop(now + 0.15);
     } else if (type === "crash") {
-        // Efeito de Colisão (Game Over)
         osc.type = "sawtooth";
         osc.frequency.setValueAtTime(120, now);
         osc.frequency.exponentialRampToValueAtTime(30, now + 0.3);
-        gain.gain.setValueAtTime(0.5, now);
+        gain.gain.setValueAtTime(0.4, now);
         gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
-        osc.start(now);
-        osc.stop(now + 0.3);
+        osc.start(now); osc.stop(now + 0.3);
     } else if (type === "win") {
-        // Efeito de Passar de Fase
         osc.type = "triangle";
         osc.frequency.setValueAtTime(300, now);
         osc.frequency.setValueAtTime(450, now + 0.1);
         osc.frequency.setValueAtTime(600, now + 0.2);
         gain.gain.setValueAtTime(0.3, now);
         gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
-        osc.start(now);
-        osc.stop(now + 0.35);
+        osc.start(now); osc.stop(now + 0.35);
     }
 }
 
 function updateHUD() {
-    document.getElementById("hud-level").innerText = `FASE: ${currentLevel}`;
+    document.getElementById("hud-level").innerText = `FASE ${currentLevel}`;
     document.getElementById("hud-highscore").innerText = `RECORDE: ${highScore}`;
 }
 updateHUD();
@@ -187,39 +192,26 @@ function handleInputStart(x) {
     jumpPressed = true;
     touchX = x;
 }
-
-function handleInputMove(x) {
-    if (gameState !== "PLAYING") return;
-    touchX = x;
-}
-
-function handleInputEnd() {
-    isTouching = false;
-    jumpPressed = false;
-}
+function handleInputMove(x) { if (gameState === "PLAYING") touchX = x; }
+function handleInputEnd() { isTouching = false; jumpPressed = false; }
 
 canvas.addEventListener("touchstart", (e) => {
     let rect = canvas.getBoundingClientRect();
-    let x = (e.touches[0].clientX - rect.left) * (canvas.width / rect.width);
-    handleInputStart(x);
+    handleInputStart((e.touches[0].clientX - rect.left) * (canvas.width / rect.width));
 });
 canvas.addEventListener("touchmove", (e) => {
     let rect = canvas.getBoundingClientRect();
-    let x = (e.touches[0].clientX - rect.left) * (canvas.width / rect.width);
-    handleInputMove(x);
+    handleInputMove((e.touches[0].clientX - rect.left) * (canvas.width / rect.width));
 });
 canvas.addEventListener("touchend", handleInputEnd);
-
 canvas.addEventListener("mousedown", (e) => {
     let rect = canvas.getBoundingClientRect();
-    let x = (e.clientX - rect.left) * (canvas.width / rect.width);
-    handleInputStart(x);
+    handleInputStart((e.clientX - rect.left) * (canvas.width / rect.width));
 });
 canvas.addEventListener("mousemove", (e) => {
     if (isTouching) {
         let rect = canvas.getBoundingClientRect();
-        let x = (e.clientX - rect.left) * (canvas.width / rect.width);
-        handleInputMove(x);
+        handleInputMove((e.clientX - rect.left) * (canvas.width / rect.width));
     }
 });
 canvas.addEventListener("mouseup", handleInputEnd);
@@ -228,192 +220,287 @@ window.addEventListener("keyup", (e) => { if (e.code === "Space") handleInputEnd
 
 let obstacles = [];
 
-// FASE 1: Moto
-let bike = { y: 400, vy: 0, isGrounded: true };
+// --- FASE 1: MOTO (SIDE-SCROLLER) ---
+let bike = { y: 430, vy: 0, isGrounded: true };
 
 function initLevel1() {
-    obstacles = [];
-    bike.y = 400;
-    bike.vy = 0;
-    for (let i = 400; i < LEVEL_LENGTH; i += 250 + Math.random() * 150) {
-        let type = Math.floor(Math.random() * 3);
-        obstacles.push({ x: i, type: type });
+    obstacles = []; bike.y = 430; bike.vy = 0;
+    for (let i = 500; i < LEVEL_LENGTH; i += 280 + Math.random() * 140) {
+        obstacles.push({ x: i, type: Math.floor(Math.random() * 3) });
     }
 }
 
 function updateLevel1() {
-    progress += 4;
-
+    progress += 4.5;
     if (jumpPressed && bike.isGrounded) {
-        bike.vy = -12;
-        bike.isGrounded = false;
-        jumpPressed = false;
+        bike.vy = -12.5; bike.isGrounded = false; jumpPressed = false;
         playSound("jump");
     }
     bike.y += bike.vy;
-    bike.vy += 0.6;
+    bike.vy += 0.65;
+    if (bike.y >= 430) { bike.y = 430; bike.vy = 0; bike.isGrounded = true; }
 
-    if (bike.y >= 400) {
-        bike.y = 400;
-        bike.vy = 0;
-        bike.isGrounded = true;
-    }
-
-    let bikeX = 180;
+    let bikeX = 140;
     for (let obs of obstacles) {
         let screenX = obs.x - progress + bikeX;
-        if (screenX > 150 && screenX < 200 && bike.y > 370) {
-            triggerGameOver();
-        }
+        if (screenX > 110 && screenX < 160 && bike.y > 400) triggerGameOver();
     }
-
     if (progress >= LEVEL_LENGTH) nextLevel();
 }
 
 function drawLevel1() {
-    ctx.fillStyle = "#4a90e2"; ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = "#ff7f50"; ctx.fillRect(0, 200, canvas.width, 100);
-    ctx.fillStyle = "#2e8b57"; ctx.fillRect(0, 280, canvas.width, 140);
+    // Pôr do Sol Tropical Gradiente
+    let skyGrad = ctx.createLinearGradient(0, 0, 0, 320);
+    skyGrad.addColorStop(0, '#1a0b2e'); skyGrad.addColorStop(0.5, '#8b1e58'); skyGrad.addColorStop(1, '#ff6b35');
+    ctx.fillStyle = skyGrad; ctx.fillRect(0, 0, canvas.width, 320);
 
-    ctx.fillStyle = "#555"; ctx.fillRect(0, 420, canvas.width, 220);
-    ctx.fillStyle = "#777"; ctx.fillRect(0, 420, canvas.width, 10);
+    // Sol no horizonte
+    ctx.fillStyle = '#ffe66d'; ctx.beginPath(); ctx.arc(180, 240, 45, 0, Math.PI*2); ctx.fill();
 
+    // Silhuetas de Montanhas & Coqueiros (Parallax)
+    ctx.fillStyle = '#4a0e4e';
+    ctx.beginPath();
+    ctx.moveTo(0, 320);
+    for(let i=0; i<=canvas.width; i+=40) ctx.lineTo(i, 230 + Math.sin((i + progress*0.2)*0.02)*25);
+    ctx.lineTo(canvas.width, 320); ctx.fill();
+
+    // Pista e Asfalto
+    let roadGrad = ctx.createLinearGradient(0, 450, 0, canvas.height);
+    roadGrad.addColorStop(0, '#2d3142'); roadGrad.addColorStop(1, '#1b1d28');
+    ctx.fillStyle = roadGrad; ctx.fillRect(0, 450, canvas.width, 190);
+    ctx.fillStyle = '#e0a96d'; ctx.fillRect(0, 445, canvas.width, 6); // Guia de terra
+
+    // Faixas do Asfalto Animadas
+    ctx.fillStyle = '#ffffff';
+    for(let i = - (progress * 1.5) % 40; i < canvas.width; i += 40) {
+        ctx.fillRect(i, 520, 20, 4);
+    }
+
+    // Obstáculos Renderizados
     for (let obs of obstacles) {
-        let screenX = obs.x - progress + 180;
-        if (screenX > -50 && screenX < canvas.width + 50) {
-            if (obs.type === 0) {
-                ctx.fillStyle = "#d2691e";
-                ctx.beginPath(); ctx.moveTo(screenX, 420); ctx.lineTo(screenX + 40, 420); ctx.lineTo(screenX + 40, 390); ctx.fill();
-            } else if (obs.type === 1) {
-                ctx.fillStyle = "#b22222";
-                ctx.fillRect(screenX, 385, 25, 35);
-            } else {
-                ctx.fillStyle = "#808080";
-                ctx.beginPath(); ctx.arc(screenX + 15, 410, 15, 0, Math.PI * 2); ctx.fill();
+        let screenX = obs.x - progress + 140;
+        if (screenX > -60 && screenX < canvas.width + 60) {
+            if (obs.type === 0) { // Rampa
+                ctx.fillStyle = '#a65b32';
+                ctx.beginPath(); ctx.moveTo(screenX, 450); ctx.lineTo(screenX + 50, 450); ctx.lineTo(screenX + 50, 410); ctx.fill();
+                ctx.fillStyle = '#e28743'; ctx.fillRect(screenX + 46, 410, 4, 40);
+            } else if (obs.type === 1) { // Tonel de Óleo
+                ctx.fillStyle = '#d62828'; ctx.fillRect(screenX, 410, 26, 40);
+                ctx.fillStyle = '#003049'; ctx.fillRect(screenX, 422, 26, 8);
+                ctx.fillStyle = '#fcbf49'; ctx.beginPath(); ctx.arc(screenX+13, 430, 4, 0, Math.PI*2); ctx.fill();
+            } else { // Pedras 3D
+                ctx.fillStyle = '#5c677d';
+                ctx.beginPath(); ctx.arc(screenX + 18, 435, 15, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = '#7d8597'; ctx.beginPath(); ctx.arc(screenX + 14, 430, 8, 0, Math.PI * 2); ctx.fill();
             }
         }
     }
 
-    ctx.fillStyle = "#ff0000"; ctx.fillRect(170, bike.y, 30, 15);
-    ctx.fillStyle = "#000"; ctx.beginPath(); ctx.arc(175, bike.y + 15, 7, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.arc(195, bike.y + 15, 7, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = "#0000ff"; ctx.fillRect(178, bike.y - 12, 12, 12);
+    // Moto HD + Piloto
+    let bx = 140, by = bike.y;
+    // Sombra
+    ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.beginPath(); ctx.ellipse(bx + 15, 448, 20, 5, 0, 0, Math.PI*2); ctx.fill();
+    // Rodas com Raios em Rotação
+    ctx.strokeStyle = '#333'; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.arc(bx - 5, by + 12, 10, 0, Math.PI*2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(bx + 30, by + 12, 10, 0, Math.PI*2); ctx.stroke();
+    // Carenagem da Moto
+    ctx.fillStyle = '#ef233c'; ctx.beginPath(); ctx.moveTo(bx - 8, by + 5); ctx.lineTo(bx + 25, by - 5); ctx.lineTo(bx + 32, by + 8); ctx.fill();
+    ctx.fillStyle = '#d90429'; ctx.fillRect(bx + 5, by - 2, 18, 10);
+    // Escape + Fogo Animado
+    ctx.fillStyle = '#8d99ae'; ctx.fillRect(bx - 12, by + 8, 10, 3);
+    if(Math.random() > 0.3) { ctx.fillStyle = '#ffb703'; ctx.fillRect(bx - 17, by + 7, 5, 5); }
+    // Piloto
+    ctx.fillStyle = '#2b2d42'; ctx.fillRect(bx + 5, by - 16, 10, 14); // Corpo
+    ctx.fillStyle = '#d90429'; ctx.beginPath(); ctx.arc(bx + 12, by - 20, 7, 0, Math.PI*2); ctx.fill(); // Capacete
+    ctx.fillStyle = '#00b4d8'; ctx.fillRect(bx + 14, by - 22, 5, 4); // Viseira
 
-    let flagX = LEVEL_LENGTH - progress + 180;
+    // Linha de Chegada com Bandeira
+    let flagX = LEVEL_LENGTH - progress + 140;
     if (flagX < canvas.width + 100) {
-        ctx.fillStyle = "#fff"; ctx.fillRect(flagX, 320, 10, 100);
-        ctx.fillStyle = "#000"; ctx.fillRect(flagX + 10, 320, 20, 15);
+        ctx.fillStyle = '#ffffff'; ctx.fillRect(flagX, 330, 6, 120);
+        ctx.fillStyle = '#000000';
+        for(let r=0; r<4; r++) {
+            for(let c=0; c<2; c++) {
+                if((r+c)%2 === 0) ctx.fillRect(flagX + 6 + c*10, 330 + r*10, 10, 10);
+            }
+        }
     }
 }
 
-// FASE 2: Carro
+// --- FASE 2: CARRO (TOP-DOWN) ---
 let carX = 180;
 
 function initLevel2() {
-    obstacles = [];
-    carX = 180;
-    for (let i = 300; i < LEVEL_LENGTH; i += 180 + Math.random() * 100) {
-        obstacles.push({ y: -i, x: 100 + Math.random() * 160 });
+    obstacles = []; carX = 180;
+    for (let i = 400; i < LEVEL_LENGTH; i += 220 + Math.random() * 120) {
+        obstacles.push({ y: -i, x: 95 + Math.random() * 170, color: ['#e63946','#2a9d8f','#e9c46a'][Math.floor(Math.random()*3)] });
     }
 }
 
 function updateLevel2() {
-    progress += 5;
-    carX += (touchX - carX) * 0.15;
-
+    progress += 5.5;
+    carX += (touchX - carX) * 0.18;
     for (let obs of obstacles) {
         let screenY = obs.y + progress;
-        if (Math.abs(screenY - 520) < 30 && Math.abs(obs.x - carX) < 25) {
-            triggerGameOver();
-        }
+        if (Math.abs(screenY - 510) < 40 && Math.abs(obs.x - carX) < 28) triggerGameOver();
     }
-
     if (progress >= LEVEL_LENGTH) nextLevel();
 }
 
 function drawLevel2() {
-    ctx.fillStyle = "#228b22"; ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = "#333"; ctx.fillRect(70, 0, 220, canvas.height);
-    ctx.fillStyle = "#fff";
-    for (let i = 0; i < canvas.height; i += 40) {
-        ctx.fillRect(178, (i + (progress % 40)) % canvas.height, 4, 20);
+    // Gramado Lateral
+    ctx.fillStyle = '#2d6a4f'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Asfalto da Pista
+    ctx.fillStyle = '#212529'; ctx.fillRect(60, 0, 240, canvas.height);
+
+    // Zebras Animadas nas Bordas
+    for(let i = - (progress * 2) % 30; i < canvas.height; i += 30) {
+        ctx.fillStyle = (Math.floor((i + progress*2)/30) % 2 === 0) ? '#e63946' : '#ffffff';
+        ctx.fillRect(52, i, 8, 30); ctx.fillRect(300, i, 8, 30);
     }
 
+    // Linha Central Tracing
+    ctx.fillStyle = '#ffb703';
+    for (let i = - (progress * 2) % 40; i < canvas.height; i += 40) {
+        ctx.fillRect(178, i, 4, 20);
+    }
+
+    // Carros Inimigos HD
     for (let obs of obstacles) {
         let screenY = obs.y + progress;
-        if (screenY > -50 && screenY < canvas.height + 50) {
-            ctx.fillStyle = "#ff4500"; ctx.fillRect(obs.x - 12, screenY - 20, 24, 40);
+        if (screenY > -60 && screenY < canvas.height + 60) {
+            let cx = obs.x, cy = screenY;
+            // Sombra
+            ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.fillRect(cx - 14, cy - 20, 32, 48);
+            // Chassi
+            ctx.fillStyle = obs.color; ctx.fillRect(cx - 15, cy - 22, 30, 44);
+            // Teto/Vidros
+            ctx.fillStyle = '#1d3557'; ctx.fillRect(cx - 10, cy - 10, 20, 20);
+            ctx.fillStyle = '#457b9d'; ctx.fillRect(cx - 8, cy - 14, 16, 5); // Para-brisa
+            // Faróis Traseiros
+            ctx.fillStyle = '#ff0000'; ctx.fillRect(cx - 13, cy + 18, 6, 3); ctx.fillRect(cx + 7, cy + 18, 6, 3);
         }
     }
 
-    ctx.fillStyle = "#00bfff"; ctx.fillRect(carX - 14, 500, 28, 45);
+    // Carro Principal (Player)
+    let px = carX, py = 510;
+    // Feixe dos Faróis
+    let headlight = ctx.createLinearGradient(px, py - 20, px, py - 90);
+    headlight.addColorStop(0, 'rgba(255,255,200,0.5)'); headlight.addColorStop(1, 'rgba(255,255,200,0)');
+    ctx.fillStyle = headlight;
+    ctx.beginPath(); ctx.moveTo(px - 10, py - 20); ctx.lineTo(px - 25, py - 90); ctx.lineTo(px + 25, py - 90); ctx.lineTo(px + 10, py - 20); ctx.fill();
 
+    // Sombra do Carro
+    ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.fillRect(px - 14, py - 20, 32, 48);
+    // Corpo do Esportivo
+    ctx.fillStyle = '#00b4d8'; ctx.fillRect(px - 15, py - 22, 30, 44);
+    ctx.fillStyle = '#90e0ef'; ctx.fillRect(px - 11, py - 8, 22, 18); // Cabine
+    ctx.fillStyle = '#03045e'; ctx.fillRect(px - 9, py - 12, 18, 6); // Para-brisa dianteiro
+    // Aerofólio
+    ctx.fillStyle = '#023e8a'; ctx.fillRect(px - 16, py + 18, 32, 5);
+
+    // Chegada (Bandeirada)
     let flagY = LEVEL_LENGTH - progress;
-    if (flagY > -50 && flagY < canvas.height) {
-        ctx.fillStyle = "#fff"; ctx.fillRect(70, canvas.height - flagY, 220, 20);
+    if (flagY > -60 && flagY < canvas.height) {
+        ctx.fillStyle = '#ffffff'; ctx.fillRect(60, canvas.height - flagY, 240, 24);
+        ctx.fillStyle = '#000000';
+        for(let i=0; i<12; i++) {
+            if(i%2===0) {
+                ctx.fillRect(60 + i*20, canvas.height - flagY, 10, 12);
+                ctx.fillRect(70 + i*20, canvas.height - flagY + 12, 10, 12);
+            }
+        }
     }
 }
 
-// FASE 3: Avião
+// --- FASE 3: AVIÃO (PERSPECTIVA 3D REVERSA) ---
 let planeX = 180;
-let planeY = 500;
 
 function initLevel3() {
-    obstacles = [];
-    planeX = 180;
-    for (let i = 400; i < LEVEL_LENGTH; i += 200 + Math.random() * 100) {
-        obstacles.push({ z: i, x: 80 + Math.random() * 200, type: Math.random() > 0.5 ? 'plane' : 'building' });
+    obstacles = []; planeX = 180;
+    for (let i = 450; i < LEVEL_LENGTH; i += 240 + Math.random() * 100) {
+        obstacles.push({ z: i, x: 70 + Math.random() * 220, type: Math.random() > 0.4 ? 'building' : 'plane' });
     }
 }
 
 function updateLevel3() {
     progress += 6;
-    planeX += (touchX - planeX) * 0.15;
-
+    planeX += (touchX - planeX) * 0.18;
     for (let obs of obstacles) {
         let distZ = obs.z - progress;
-        if (distZ < 40 && distZ > 0 && Math.abs(obs.x - planeX) < 30) {
-            triggerGameOver();
-        }
+        if (distZ < 40 && distZ > 0 && Math.abs(obs.x - planeX) < 35) triggerGameOver();
     }
-
     if (progress >= LEVEL_LENGTH) nextLevel();
 }
 
 function drawLevel3() {
-    ctx.fillStyle = "#87ceeb"; ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = "#228b22"; ctx.fillRect(0, 320, canvas.width, 320);
+    // Céu e Pôr do sol
+    let skyGrad = ctx.createLinearGradient(0, 0, 0, 340);
+    skyGrad.addColorStop(0, '#03045e'); skyGrad.addColorStop(0.6, '#0077b6'); skyGrad.addColorStop(1, '#90e0ef');
+    ctx.fillStyle = skyGrad; ctx.fillRect(0, 0, canvas.width, 340);
 
-    ctx.fillStyle = "#696969";
-    ctx.beginPath(); ctx.moveTo(0, 320); ctx.lineTo(100, 200); ctx.lineTo(200, 320); ctx.fill();
-    ctx.beginPath(); ctx.moveTo(150, 320); ctx.lineTo(280, 180); ctx.lineTo(360, 320); ctx.fill();
+    // Solo Gradiente de velocidade
+    let groundGrad = ctx.createLinearGradient(0, 340, 0, canvas.height);
+    groundGrad.addColorStop(0, '#132a13'); groundGrad.addColorStop(1, '#31572c');
+    ctx.fillStyle = groundGrad; ctx.fillRect(0, 340, canvas.width, 300);
 
+    // Grade de perspectiva no solo
+    ctx.strokeStyle = 'rgba(255,255,255,0.15)'; ctx.lineWidth = 1;
+    for(let x = -200; x <= canvas.width + 200; x += 60) {
+        ctx.beginPath(); ctx.moveTo(180, 340); ctx.lineTo(x, canvas.height); ctx.stroke();
+    }
+
+    // Obstáculos 3D com Escalonamento
     for (let obs of obstacles) {
         let distZ = obs.z - progress;
-        if (distZ > 0 && distZ < 600) {
-            let scale = 1 - (distZ / 600);
+        if (distZ > 0 && distZ < 700) {
+            let scale = 1 - (distZ / 700);
             let drawX = 180 + (obs.x - 180) * scale;
-            let drawY = 320 + 100 * scale;
-            let size = 50 * scale;
+            let drawY = 340 + 120 * scale;
+            let size = 65 * scale;
 
             if (obs.type === 'building') {
-                ctx.fillStyle = "#444"; ctx.fillRect(drawX - size/2, drawY - size*2, size, size*2);
+                // Prédio Espelhado 3D
+                ctx.fillStyle = '#1d2d44'; ctx.fillRect(drawX - size/2, drawY - size*2.5, size, size*2.5);
+                ctx.fillStyle = '#3e5c76'; ctx.fillRect(drawX - size/2, drawY - size*2.5, size*0.3, size*2.5); // Sombra lateral
+                ctx.fillStyle = '#f0a500'; // Janelas
+                if(size > 15) ctx.fillRect(drawX - size/4, drawY - size*2, size/4, size/5);
             } else {
-                ctx.fillStyle = "#e67e22"; ctx.beginPath(); ctx.arc(drawX, drawY - size, size/2, 0, Math.PI*2); ctx.fill();
+                // Caça Inimigo
+                ctx.fillStyle = '#d90429';
+                ctx.beginPath();
+                ctx.moveTo(drawX, drawY - size/2);
+                ctx.lineTo(drawX - size, drawY + size/2);
+                ctx.lineTo(drawX + size, drawY + size/2); ctx.fill();
             }
         }
     }
 
-    ctx.fillStyle = "#e74c3c";
-    ctx.beginPath();
-    ctx.moveTo(planeX, planeY - 20);
-    ctx.lineTo(planeX - 35, planeY + 10);
-    ctx.lineTo(planeX + 35, planeY + 10);
-    ctx.fill();
-    ctx.fillStyle = "#f1c40f"; ctx.fillRect(planeX - 5, planeY - 25, 10, 30);
+    // Avião Acrobático do Player (3ª Pessoa)
+    let ax = planeX, ay = 480;
+    // Rastro de Fumaça nas asas
+    ctx.strokeStyle = 'rgba(255,255,255,0.4)'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(ax - 38, ay + 10); ctx.lineTo(ax - 50, canvas.height); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(ax + 38, ay + 10); ctx.lineTo(ax + 50, canvas.height); ctx.stroke();
+
+    // Sombra no Solo
+    ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.beginPath(); ctx.ellipse(ax, 570, 30, 8, 0, 0, Math.PI*2); ctx.fill();
+
+    // Corpo do Avião
+    ctx.fillStyle = '#f72585'; // Asas
+    ctx.beginPath(); ctx.moveTo(ax, ay - 25); ctx.lineTo(ax - 42, ay + 12); ctx.lineTo(ax + 42, ay + 12); ctx.fill();
+    ctx.fillStyle = '#7209b7'; ctx.fillRect(ax - 6, ay - 30, 12, 42); // Fuselagem
+    ctx.fillStyle = '#4cc9f0'; ctx.beginPath(); ctx.arc(ax, ay - 10, 5, 0, Math.PI*2); ctx.fill(); // Canopi / Cockpit
+    // Hélice Rotação
+    ctx.strokeStyle = 'rgba(255,255,255,0.8)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(ax, ay - 32, 12, 0, Math.PI*2); ctx.stroke();
 }
 
+// LOOP & ESTADOS
 function loop() {
+    animFrame++;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     if (gameState === "PLAYING") {
@@ -422,23 +509,17 @@ function loop() {
         else if (mode === 1) { updateLevel2(); drawLevel2(); }
         else if (mode === 2) { updateLevel3(); drawLevel3(); }
     }
-
     requestAnimationFrame(loop);
 }
 
 function startGame() {
-    initAudio();
-    currentLevel = 1;
-    startLevel();
+    initAudio(); currentLevel = 1; startLevel();
     document.getElementById("screen-start").classList.add("hidden");
 }
 
 function startLevel() {
-    progress = 0;
-    gameState = "PLAYING";
-    updateHUD();
+    progress = 0; gameState = "PLAYING"; updateHUD();
     document.getElementById("screen-gameover").classList.add("hidden");
-
     let mode = (currentLevel - 1) % 3;
     if (mode === 0) initLevel1();
     else if (mode === 1) initLevel2();
@@ -446,8 +527,7 @@ function startLevel() {
 }
 
 function nextLevel() {
-    playSound("win");
-    currentLevel++;
+    playSound("win"); currentLevel++;
     if (currentLevel > highScore) {
         highScore = currentLevel;
         localStorage.setItem("morph_racer_record", highScore);
@@ -456,17 +536,12 @@ function nextLevel() {
 }
 
 function triggerGameOver() {
-    playSound("crash");
-    gameState = "GAMEOVER";
+    playSound("crash"); gameState = "GAMEOVER";
     document.getElementById("gameover-info").innerText = `Fase alcançada: ${currentLevel}`;
     document.getElementById("screen-gameover").classList.remove("hidden");
 }
 
-function restartLevel() {
-    initAudio();
-    startLevel();
-}
-
+function restartLevel() { initAudio(); startLevel(); }
 function quitGame() {
     gameState = "MENU";
     document.getElementById("screen-gameover").classList.add("hidden");
