@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Morph Racer</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        body {
+            background-color: #111;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+        }
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            max-width: 480px;
+            max-height: 800px;
+            background: #000;
+            box-shadow: 0 0 20px rgba(0,0,0,0.8);
+            overflow: hidden;
+        }
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        #ui-hud {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            right: 15px;
+            display: flex;
+            justify-content: space-between;
+            color: #FFF;
+            font-size: 18px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px #000;
+            pointer-events: none;
+            z-index: 10;
+        }
+        .overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: #FFF;
+            z-index: 20;
+        }
+        .overlay h1 { font-size: 36px; margin-bottom: 10px; color: #FFD700; text-shadow: 0 0 10px #FF8C00; }
+        .overlay p { font-size: 18px; margin-bottom: 25px; }
+        .btn-container { display: flex; gap: 15px; }
+        button {
+            padding: 12px 24px;
+            font-size: 18px;
+            font-weight: bold;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        button:active { transform: scale(0.95); }
+        .btn-retry { background: #28a745; color: white; }
+        .btn-quit { background: #dc3545; color: white; }
+        .btn-start { background: #FF8C00; color: white; font-size: 22px; padding: 15px 40px; }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <div id="ui-hud">
+        <span id="hud-level">FASE: 1</span>
+        <span id="hud-highscore">RECORDE: 0</span>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- Menu Inicial -->
+    <div id="screen-start" class="overlay">
+        <h1>MORPH RACER</h1>
+        <p>3 Modos em 1 Desafio!</p>
+        <button class="btn-start" onclick="startGame()">JOGAR</button>
+    </div>
+
+    <!-- Menu Game Over -->
+    <div id="screen-gameover" class="overlay hidden">
+        <h1>BATEU!</h1>
+        <p id="gameover-info">Fase alcançada: 1</p>
+        <div class="btn-container">
+            <button class="btn-retry" onclick="restartLevel()">Tentar de Novo</button>
+            <button class="btn-quit" onclick="quitGame()">Desistir</button>
+        </div>
+    </div>
+</div>
+
+<script>
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+
+canvas.width = 360;
+canvas.height = 640;
+
+let gameState = "MENU";
+let currentLevel = 1;
+let highScore = localStorage.getItem("morph_racer_record") || 0;
+let progress = 0;
+const LEVEL_LENGTH = 1500;
+
+// SINTETIZADOR DE ÁUDIO (Web Audio API)
+let audioCtx = null;
+
+function initAudio() {
+    if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+}
+
+function playSound(type) {
+    if (!audioCtx) return;
+
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+
+    const now = audioCtx.currentTime;
+
+    if (type === "jump") {
+        // Efeito de Pulo (Moto)
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(150, now);
+        osc.frequency.exponentialRampToValueAtTime(600, now + 0.15);
+        gain.gain.setValueAtTime(0.3, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+        osc.start(now);
+        osc.stop(now + 0.15);
+    } else if (type === "crash") {
+        // Efeito de Colisão (Game Over)
+        osc.type = "sawtooth";
+        osc.frequency.setValueAtTime(120, now);
+        osc.frequency.exponentialRampToValueAtTime(30, now + 0.3);
+        gain.gain.setValueAtTime(0.5, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+        osc.start(now);
+        osc.stop(now + 0.3);
+    } else if (type === "win") {
+        // Efeito de Passar de Fase
+        osc.type = "triangle";
+        osc.frequency.setValueAtTime(300, now);
+        osc.frequency.setValueAtTime(450, now + 0.1);
+        osc.frequency.setValueAtTime(600, now + 0.2);
+        gain.gain.setValueAtTime(0.3, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+        osc.start(now);
+        osc.stop(now + 0.35);
+    }
+}
+
+function updateHUD() {
+    document.getElementById("hud-level").innerText = `FASE: ${currentLevel}`;
+    document.getElementById("hud-highscore").innerText = `RECORDE: ${highScore}`;
+}
+updateHUD();
+
+let touchX = canvas.width / 2;
+let isTouching = false;
+let jumpPressed = false;
+
+function handleInputStart(x) {
+    if (gameState !== "PLAYING") return;
+    isTouching = true;
+    jumpPressed = true;
+    touchX = x;
+}
+
+function handleInputMove(x) {
+    if (gameState !== "PLAYING") return;
+    touchX = x;
+}
+
+function handleInputEnd() {
+    isTouching = false;
+    jumpPressed = false;
+}
+
+canvas.addEventListener("touchstart", (e) => {
+    let rect = canvas.getBoundingClientRect();
+    let x = (e.touches[0].clientX - rect.left) * (canvas.width / rect.width);
+    handleInputStart(x);
+});
+canvas.addEventListener("touchmove", (e) => {
+    let rect = canvas.getBoundingClientRect();
+    let x = (e.touches[0].clientX - rect.left) * (canvas.width / rect.width);
+    handleInputMove(x);
+});
+canvas.addEventListener("touchend", handleInputEnd);
+
+canvas.addEventListener("mousedown", (e) => {
+    let rect = canvas.getBoundingClientRect();
+    let x = (e.clientX - rect.left) * (canvas.width / rect.width);
+    handleInputStart(x);
+});
+canvas.addEventListener("mousemove", (e) => {
+    if (isTouching) {
+        let rect = canvas.getBoundingClientRect();
+        let x = (e.clientX - rect.left) * (canvas.width / rect.width);
+        handleInputMove(x);
+    }
+});
+canvas.addEventListener("mouseup", handleInputEnd);
+window.addEventListener("keydown", (e) => { if (e.code === "Space") handleInputStart(canvas.width / 2); });
+window.addEventListener("keyup", (e) => { if (e.code === "Space") handleInputEnd(); });
+
+let obstacles = [];
+
+// FASE 1: Moto
+let bike = { y: 400, vy: 0, isGrounded: true };
+
+function initLevel1() {
+    obstacles = [];
+    bike.y = 400;
+    bike.vy = 0;
+    for (let i = 400; i < LEVEL_LENGTH; i += 250 + Math.random() * 150) {
+        let type = Math.floor(Math.random() * 3);
+        obstacles.push({ x: i, type: type });
+    }
+}
+
+function updateLevel1() {
+    progress += 4;
+
+    if (jumpPressed && bike.isGrounded) {
+        bike.vy = -12;
+        bike.isGrounded = false;
+        jumpPressed = false;
+        playSound("jump");
+    }
+    bike.y += bike.vy;
+    bike.vy += 0.6;
+
+    if (bike.y >= 400) {
+        bike.y = 400;
+        bike.vy = 0;
+        bike.isGrounded = true;
+    }
+
+    let bikeX = 180;
+    for (let obs of obstacles) {
+        let screenX = obs.x - progress + bikeX;
+        if (screenX > 150 && screenX < 200 && bike.y > 370) {
+            triggerGameOver();
+        }
+    }
+
+    if (progress >= LEVEL_LENGTH) nextLevel();
+}
+
+function drawLevel1() {
+    ctx.fillStyle = "#4a90e2"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "#ff7f50"; ctx.fillRect(0, 200, canvas.width, 100);
+    ctx.fillStyle = "#2e8b57"; ctx.fillRect(0, 280, canvas.width, 140);
+
+    ctx.fillStyle = "#555"; ctx.fillRect(0, 420, canvas.width, 220);
+    ctx.fillStyle = "#777"; ctx.fillRect(0, 420, canvas.width, 10);
+
+    for (let obs of obstacles) {
+        let screenX = obs.x - progress + 180;
+        if (screenX > -50 && screenX < canvas.width + 50) {
+            if (obs.type === 0) {
+                ctx.fillStyle = "#d2691e";
+                ctx.beginPath(); ctx.moveTo(screenX, 420); ctx.lineTo(screenX + 40, 420); ctx.lineTo(screenX + 40, 390); ctx.fill();
+            } else if (obs.type === 1) {
+                ctx.fillStyle = "#b22222";
+                ctx.fillRect(screenX, 385, 25, 35);
+            } else {
+                ctx.fillStyle = "#808080";
+                ctx.beginPath(); ctx.arc(screenX + 15, 410, 15, 0, Math.PI * 2); ctx.fill();
+            }
+        }
+    }
+
+    ctx.fillStyle = "#ff0000"; ctx.fillRect(170, bike.y, 30, 15);
+    ctx.fillStyle = "#000"; ctx.beginPath(); ctx.arc(175, bike.y + 15, 7, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(195, bike.y + 15, 7, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#0000ff"; ctx.fillRect(178, bike.y - 12, 12, 12);
+
+    let flagX = LEVEL_LENGTH - progress + 180;
+    if (flagX < canvas.width + 100) {
+        ctx.fillStyle = "#fff"; ctx.fillRect(flagX, 320, 10, 100);
+        ctx.fillStyle = "#000"; ctx.fillRect(flagX + 10, 320, 20, 15);
+    }
+}
+
+// FASE 2: Carro
+let carX = 180;
+
+function initLevel2() {
+    obstacles = [];
+    carX = 180;
+    for (let i = 300; i < LEVEL_LENGTH; i += 180 + Math.random() * 100) {
+        obstacles.push({ y: -i, x: 100 + Math.random() * 160 });
+    }
+}
+
+function updateLevel2() {
+    progress += 5;
+    carX += (touchX - carX) * 0.15;
+
+    for (let obs of obstacles) {
+        let screenY = obs.y + progress;
+        if (Math.abs(screenY - 520) < 30 && Math.abs(obs.x - carX) < 25) {
+            triggerGameOver();
+        }
+    }
+
+    if (progress >= LEVEL_LENGTH) nextLevel();
+}
+
+function drawLevel2() {
+    ctx.fillStyle = "#228b22"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "#333"; ctx.fillRect(70, 0, 220, canvas.height);
+    ctx.fillStyle = "#fff";
+    for (let i = 0; i < canvas.height; i += 40) {
+        ctx.fillRect(178, (i + (progress % 40)) % canvas.height, 4, 20);
+    }
+
+    for (let obs of obstacles) {
+        let screenY = obs.y + progress;
+        if (screenY > -50 && screenY < canvas.height + 50) {
+            ctx.fillStyle = "#ff4500"; ctx.fillRect(obs.x - 12, screenY - 20, 24, 40);
+        }
+    }
+
+    ctx.fillStyle = "#00bfff"; ctx.fillRect(carX - 14, 500, 28, 45);
+
+    let flagY = LEVEL_LENGTH - progress;
+    if (flagY > -50 && flagY < canvas.height) {
+        ctx.fillStyle = "#fff"; ctx.fillRect(70, canvas.height - flagY, 220, 20);
+    }
+}
+
+// FASE 3: Avião
+let planeX = 180;
+let planeY = 500;
+
+function initLevel3() {
+    obstacles = [];
+    planeX = 180;
+    for (let i = 400; i < LEVEL_LENGTH; i += 200 + Math.random() * 100) {
+        obstacles.push({ z: i, x: 80 + Math.random() * 200, type: Math.random() > 0.5 ? 'plane' : 'building' });
+    }
+}
+
+function updateLevel3() {
+    progress += 6;
+    planeX += (touchX - planeX) * 0.15;
+
+    for (let obs of obstacles) {
+        let distZ = obs.z - progress;
+        if (distZ < 40 && distZ > 0 && Math.abs(obs.x - planeX) < 30) {
+            triggerGameOver();
+        }
+    }
+
+    if (progress >= LEVEL_LENGTH) nextLevel();
+}
+
+function drawLevel3() {
+    ctx.fillStyle = "#87ceeb"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "#228b22"; ctx.fillRect(0, 320, canvas.width, 320);
+
+    ctx.fillStyle = "#696969";
+    ctx.beginPath(); ctx.moveTo(0, 320); ctx.lineTo(100, 200); ctx.lineTo(200, 320); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(150, 320); ctx.lineTo(280, 180); ctx.lineTo(360, 320); ctx.fill();
+
+    for (let obs of obstacles) {
+        let distZ = obs.z - progress;
+        if (distZ > 0 && distZ < 600) {
+            let scale = 1 - (distZ / 600);
+            let drawX = 180 + (obs.x - 180) * scale;
+            let drawY = 320 + 100 * scale;
+            let size = 50 * scale;
+
+            if (obs.type === 'building') {
+                ctx.fillStyle = "#444"; ctx.fillRect(drawX - size/2, drawY - size*2, size, size*2);
+            } else {
+                ctx.fillStyle = "#e67e22"; ctx.beginPath(); ctx.arc(drawX, drawY - size, size/2, 0, Math.PI*2); ctx.fill();
+            }
+        }
+    }
+
+    ctx.fillStyle = "#e74c3c";
+    ctx.beginPath();
+    ctx.moveTo(planeX, planeY - 20);
+    ctx.lineTo(planeX - 35, planeY + 10);
+    ctx.lineTo(planeX + 35, planeY + 10);
+    ctx.fill();
+    ctx.fillStyle = "#f1c40f"; ctx.fillRect(planeX - 5, planeY - 25, 10, 30);
+}
+
+function loop() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    if (gameState === "PLAYING") {
+        let mode = (currentLevel - 1) % 3;
+        if (mode === 0) { updateLevel1(); drawLevel1(); }
+        else if (mode === 1) { updateLevel2(); drawLevel2(); }
+        else if (mode === 2) { updateLevel3(); drawLevel3(); }
+    }
+
+    requestAnimationFrame(loop);
+}
+
+function startGame() {
+    initAudio();
+    currentLevel = 1;
+    startLevel();
+    document.getElementById("screen-start").classList.add("hidden");
+}
+
+function startLevel() {
+    progress = 0;
+    gameState = "PLAYING";
+    updateHUD();
+    document.getElementById("screen-gameover").classList.add("hidden");
+
+    let mode = (currentLevel - 1) % 3;
+    if (mode === 0) initLevel1();
+    else if (mode === 1) initLevel2();
+    else if (mode === 2) initLevel3();
+}
+
+function nextLevel() {
+    playSound("win");
+    currentLevel++;
+    if (currentLevel > highScore) {
+        highScore = currentLevel;
+        localStorage.setItem("morph_racer_record", highScore);
+    }
+    startLevel();
+}
+
+function triggerGameOver() {
+    playSound("crash");
+    gameState = "GAMEOVER";
+    document.getElementById("gameover-info").innerText = `Fase alcançada: ${currentLevel}`;
+    document.getElementById("screen-gameover").classList.remove("hidden");
+}
+
+function restartLevel() {
+    initAudio();
+    startLevel();
+}
+
+function quitGame() {
+    gameState = "MENU";
+    document.getElementById("screen-gameover").classList.add("hidden");
+    document.getElementById("screen-start").classList.remove("hidden");
+}
+
+loop();
+</script>
+</body>
+</html>
